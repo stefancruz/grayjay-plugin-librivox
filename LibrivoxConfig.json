@@ -1,0 +1,26 @@
+{
+  "name": "LibriVox",
+  "description": "free public domain audiobooks powered by archive.org",
+  "author": "FUTO",
+  "authorUrl": "https://futo.org",
+  "platformUrl": "https://librivox.org/",
+  "sourceUrl": "http://100.81.58.19:3000/LibrivoxConfig.json",
+  "repositoryUrl": "https://futo.org",
+  "scriptUrl": "./LibrivoxScript.js",
+  "version": 1,
+  "iconUrl": "./LibrivoxIcon.png",
+  "id": "5c2f78d4-6eec-4f3f-b25b-28d885aeb147",
+  "scriptSignature": "",
+  "scriptPublicKey": "",
+  "packages": [
+    "Http",
+    "DOMParser"
+  ],
+  "allowEval": false,
+  "allowUrls": [
+    ".librivox.org"
+  ],
+  "supportedClaimTypes": [
+    4
+  ]
+}
