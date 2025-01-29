@@ -1,26 +1,24 @@
 {
-  "name": "LibriVox",
-  "description": "free public domain audiobooks powered by archive.org",
+  "name": "LibriVox (Alpha)",
+  "description": "Acoustical liberation of books in the public domain",
   "author": "FUTO",
-  "authorUrl": "https://futo.org",
+  "authorUrl": "https://futo.org/",
   "platformUrl": "https://librivox.org/",
-  "sourceUrl": "http://100.81.58.19:3000/LibrivoxConfig.json",
-  "repositoryUrl": "https://futo.org",
+  "sourceUrl": "https://stefancruz.github.io/grayjay-plugin-librivox/LibrivoxConfig.json",
+  "repositoryUrl": "https://github.com/stefancruz/grayjay-plugin-librivox",
   "scriptUrl": "./LibrivoxScript.js",
   "version": 1,
   "iconUrl": "./LibrivoxIcon.png",
   "id": "5c2f78d4-6eec-4f3f-b25b-28d885aeb147",
-  "scriptSignature": "",
-  "scriptPublicKey": "",
+  "scriptSignature": "Wxi+3IDyn9B/1ITfyKPJdMtsUg+GQnhO/8M9jvNdBBWtmTC1cYkKr0M7ggE9W72tKpV95kwlfiGksZzu4sgSkLoVDNeJhpo+eNOlJxsZ/ccAf4txF2WIzZy1jxIX1B1j/Jbs0diVTeK5jrySJC7sgNuZJ8dyCdOCSV6E5wxnf7dTWFmMZgSW5MyV8zlc3go8u04Hnis0Vvx7+fHhkgLDkxR9Ub+8wNdmI5022Tc7o6XdgW/VIrhRZBjC0itgwpM6AFllANwex4i9uBGtZb28el46fkPSRvm3XP9rZFOIW5f4RKH7YIbBpEltQxTN9C+oIFER7k3APLZ3UP101NDrQg==",
+  "scriptPublicKey": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArmeP+G53ZeEn0jCLhsKnKg1kmVDda8g/ElTZUxWUX2QchYrXh0ARKsiHQsqddbZHcT0Zfd9JAUJGor9zsBovtPZIBeoX6DdHSscAKbK4px3CVXH3w3ao4BnH/Xgiypet0NaLDVONAFZFHfMN/IVfh7afEsKJfq3pVsfqt1k/SvvUVJkHqPsDcQF2kF32JlLBmimabesFah0bUVZR6Py4w3FAE3MKGG+hqdy9JmHzQuYiDKUa8S8tmaPko/vr29Px8wzGNELC697jud0RGfxSP5jhhTmcWYxgA1kLBKP6FvHFDtrqq17b23eoBNVVSWifeiPe5i+aGdiS3EEQ1QO/HwIDAQAB",
   "packages": [
     "Http",
     "DOMParser"
   ],
   "allowEval": false,
   "allowUrls": [
-    ".librivox.org"
-  ],
-  "supportedClaimTypes": [
-    4
+    ".librivox.org",
+    ".archive.org"
   ]
 }
