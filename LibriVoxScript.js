@@ -26,7 +26,7 @@ const URLS = {
 // Default images
 const DEFAULT_IMAGES = {
     BOOK_COVER: 'https://plugins.grayjay.app/LibriVox/assets/default-book-cover.png',
-    AUTHOR_AVATAR: 'https://plugins.grayjay.app/LibriVox/LibrivoxIcon.png'
+    AUTHOR_AVATAR: 'https://plugins.grayjay.app/LibriVox/LibriVoxIcon.png'
 };
 
 // Regular Expressions
