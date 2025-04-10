@@ -1,3 +1,3 @@
 # LibriVox plugin for Grayjay
 
-Click [here](https://stefancruz.github.io/grayjay-plugin-librivox/) to install into Grayjay
+Click [here](grayjay://plugin/https://plugins.grayjay.app/LibriVox/LibrivoxConfig.json) to install
