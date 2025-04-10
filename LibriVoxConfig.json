@@ -8,7 +8,7 @@
   "repositoryUrl": "https://gitlab.futo.org/videostreaming/plugins/librivox",
   "scriptUrl": "./LibriVoxScript.js",
   "version": 1,
-  "iconUrl": "./LibrivoxIcon.png",
+  "iconUrl": "./LibriVoxIcon.png",
   "id": "5c2f78d4-6eec-4f3f-b25b-28d885aeb147",
   "scriptSignature": "",
   "scriptPublicKey": "",
