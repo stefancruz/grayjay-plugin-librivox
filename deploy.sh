@@ -22,11 +22,11 @@ touch $DOCUMENT_ROOT/maintenance.file
 # Swap over the content
 echo "Deploying content..."
 mkdir -p "$DEPLOY_DIR"
-mkdir -p "$DEPLOY_DIR/media"  # Create media directory if it doesn't exist
+mkdir -p "$DEPLOY_DIR/assets"  # Create media directory if it doesn't exist
 cp LibriVoxIcon.png "$DEPLOY_DIR"
 cp LibriVoxConfig.json "$DEPLOY_DIR"
 cp LibriVoxScript.js "$DEPLOY_DIR"
-cp media/speaker.png "$DEPLOY_DIR/media/"  # Copy the speaker.png file to media folder
+cp assets/default-book-cover.png "$DEPLOY_DIR/assets/"  # Copy the speaker.png file to media folder
 # Update the sourceUrl in LibriVoxConfig.json
 echo "Updating sourceUrl in LibriVoxConfig.json..."
 jq --arg sourceUrl "$SOURCE_URL" '.sourceUrl = $sourceUrl' "$DEPLOY_DIR/LibriVoxConfig.json" > "$DEPLOY_DIR/LibriVoxConfig_temp.json"

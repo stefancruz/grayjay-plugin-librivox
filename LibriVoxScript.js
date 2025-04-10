@@ -25,8 +25,8 @@ const URLS = {
 
 // Default images
 const DEFAULT_IMAGES = {
-    BOOK_COVER: 'https://stefancruz.github.io/grayjay-plugin-librivox/assets/default-book-cover.png',
-    AUTHOR_AVATAR: 'https://stefancruz.github.io/grayjay-plugin-librivox/LibrivoxIcon.png'
+    BOOK_COVER: 'https://plugins.grayjay.app/LibriVox/assets/default-book-cover.png',
+    AUTHOR_AVATAR: 'https://plugins.grayjay.app/LibriVox/LibrivoxIcon.png'
 };
 
 // Regular Expressions
