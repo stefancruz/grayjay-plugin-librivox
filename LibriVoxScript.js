@@ -196,7 +196,7 @@ class HomeContentPager extends ContentPager {
         super([], true, { offset: 0 });
         this.latestLoaded = false;
         this.offset = 0;
-        this.pageSize = 50;
+        this.pageSize = 10;
     }
     
     nextPage() {
@@ -210,14 +210,22 @@ class HomeContentPager extends ContentPager {
     }
     
     loadInitialPage() {
-        // Step 1: Load latest releases
-        const latestResp = http.GET(URLS.API_LATEST_RELEASES, {}, false);
-        let latestBooks = [];
+        // Use batch request for the initial load
+        const batch = http.batch();
         
+        // Add both requests to the batch
+        batch.GET(URLS.API_LATEST_RELEASES, {}, false);
+        batch.GET(`${URLS.API_AUDIOBOOKS_ALL}&limit=${this.pageSize}&offset=0`, {}, false);
+        
+        const [latestResp, otherResp] = batch.execute();
+        
+        let latestBooks = [];
+        let regularBooks = [];
+        
+        // Process latest releases
         if (latestResp.isOk) {
             try {
                 const latestData = JSON.parse(latestResp.body);
-                // Process latest books and store their IDs
                 latestBooks = latestData.map(book => {
                     const platformPlaylist = audiobookToPlaylist(book);
                     
@@ -238,11 +246,7 @@ class HomeContentPager extends ContentPager {
             }
         }
         
-        // Step 2: Load regular books (first page)
-        const otherBooksUrl = `${URLS.API_AUDIOBOOKS_ALL}&limit=${this.pageSize}&offset=0`;
-        const otherResp = http.GET(otherBooksUrl, {}, false);
-        let regularBooks = [];
-        
+        // Process regular books
         if (otherResp.isOk) {
             try {
                 const otherData = JSON.parse(otherResp.body);
@@ -268,9 +272,7 @@ class HomeContentPager extends ContentPager {
     }
     
     loadMoreBooks() {
-
         this.results = [];
-
         // Only load more regular books on subsequent pages
         const nextPageUrl = `${URLS.API_AUDIOBOOKS_ALL}&limit=${this.pageSize}&offset=${this.offset}`;
         const resp = http.GET(nextPageUrl, {}, false);
@@ -347,8 +349,8 @@ class SearchAudiobooksPager extends VideoPager {
             }
         }
         
-        offset += (this.context.limit || 50);
-        let hasMore = responseLength === (this.context.limit || 50);
+        offset += (this.context.limit || 10);
+        let hasMore = responseLength === (this.context.limit || 10);
         
         return new SearchAudiobooksPager({
             videos: searchResults,
@@ -403,7 +405,7 @@ function createAudiobookSearchPager(baseUrl, query, filterCb = () => true) {
             baseUrl,
             query,
             filterCb,
-            limit: 50,
+            limit: 10,
             offset: 0
         }
     }).nextPage();
