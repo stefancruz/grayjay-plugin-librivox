@@ -579,7 +579,7 @@ function getChapterDetails(url) {
  * Loads author data from LibriVox API
  */
 function loadAuthorsData() {
-    const [err, data] = parseJsonUrl(URLS.API_AUTHORS);
+    const [err, data] = restWebRequest(URLS.API_AUTHORS);
     if (!err) {
         state.authors = data.authors.map(formatAuthorData);
     } else {
@@ -953,21 +953,6 @@ function extractChannelId(url) {
 }
 
 /**
- * Extract chapter ID from URL
- * @param {string} url Chapter URL
- * @returns {string|null} Chapter ID or null
- */
-function extractChapterId(url) {
-    if (!url) return null;
-    
-    const match = url.match(REGEX.CONTENT_DETAILS);
-    if (match) {
-        return match[1]; // The chapter ID is in the first capture group
-    }
-    return null; // Return null if no match is found
-}
-
-/**
  * Extract ID from URL query parameter
  * @param {string} url URL with ID parameter
  * @returns {string|null} ID or null
@@ -1006,7 +991,7 @@ function objectToUrlEncodedString(obj) {
  * @param {Object} opts Options (headers, authentication)
  * @returns {Array} [error, data]
  */
-function parseJsonUrl(url, opts = { is_authenticated: false, headers: {} }) {
+function restWebRequest(url, opts = { is_authenticated: false, headers: {} }) {
     const headers = opts.headers || {}; // Allow custom headers
     let response;
     
