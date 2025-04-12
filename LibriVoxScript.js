@@ -547,6 +547,12 @@ function getChapterDetails(url) {
         throw new ScriptException(`Chapter not found: ${chapterId}`);
     }
     
+    // Create a combined description that includes the reader information
+    const readerInfo = chapter.readerName ? 
+        `\n\nRead by: ${chapter.readerName}` : 
+        '';
+    const combinedDescription = playlistInfo.description + readerInfo;
+    
     const sources = [
         new AudioUrlSource({
             name: 'audio',
@@ -560,7 +566,7 @@ function getChapterDetails(url) {
     return new PlatformVideoDetails({
         id: new PlatformID(PLATFORM, url, config.id),
         name: chapter.chapterName,
-        description: playlistInfo.description,
+        description: combinedDescription,
         author: new PlatformAuthorLink(
             new PlatformID(PLATFORM, playlistInfo.authorUrl, config.id),
             playlistInfo.authorName,
