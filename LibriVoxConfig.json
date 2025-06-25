@@ -1,8 +1,8 @@
 {
   "name": "LibriVox (Alpha)",
   "description": "Acoustical liberation of books in the public domain",
-  "author": "FUTO",
-  "authorUrl": "https://futo.org/",
+  "author": "Stefan Cruz",
+  "authorUrl": "",
   "platformUrl": "https://librivox.org/",
   "sourceUrl": "http://100.81.240.6:8888/LibriVoxConfig.json",
   "repositoryUrl": "https://gitlab.futo.org/videostreaming/plugins/librivox",
