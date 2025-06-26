@@ -309,18 +309,6 @@ source.getContentDetails = function (url) {
     const sources = [];
     
     if (chapter.chapterFile) {
-        
-        // sources.push(new AudioUrlSource({
-        //     name: 'audio (cached)',
-        //     container: 'audio/mpeg',
-        //     codec: 'mp4a.40.2',
-        //     url: chapter.chapterFile,
-        //     language: 'Unknown',
-        //     duration
-        // }));
-
-        // const t = new URL(chapter.chapterFile);
-        // const contentUrl = t.searchParams.get("contentUrl");
 
         sources.push(new AudioUrlSource({
             name: 'audio (archive.org)',
@@ -330,23 +318,11 @@ source.getContentDetails = function (url) {
             language: 'Unknown',
             duration
         }));
-
         
     }
    
 
     if(chapter.section_id) {
-        
-        if(settings.useHLS) {
-            sources.push(
-                new HLSSource({
-                name: 'HLS',
-                url: `https://librivox-api.openaudiobooks.org/api/v2/proxy/${chapter.section_id}.m3u8`,
-                duration,
-                priority: true,
-                language: 'Unknown',
-            }))
-        }
 
         sources.push(new AudioUrlSource({
             name: 'audio (cached v2)',
