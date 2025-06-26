@@ -693,7 +693,7 @@ function getAuthorChannel(url) {
     };
 
     if(author.wikipediaurl) {
-        links['Wikipédia'] = author.wikipediaurl
+        links['Wikipedia'] = author.wikipediaurl
     }
 
     if(author?.externalids?.isni) {
