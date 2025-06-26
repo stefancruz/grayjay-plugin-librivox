@@ -266,6 +266,11 @@ source.getContentDetails = function (url) {
         playlistInfo = fetchAudiobookDetailsFromHtml(url);
     }
     
+    // Validate playlistInfo has chapters
+    if (!playlistInfo || !Array.isArray(playlistInfo.chapters)) {
+        throw new ScriptException(`No chapters found for audiobook`);
+    }
+    
     // Find chapter by index
     const chapter = playlistInfo.chapters.find(c => c.chapterId == chapterId);
     
@@ -857,7 +862,7 @@ function getAuthorAudiobooks(url) {
             return new PlatformPlaylist({
                 id: new PlatformID(PLATFORM, `${URLS.AUDIOBOOK_BASE}/${book.id}`, config.id),
                 name: book.title,
-                thumbnail: book.coverart_jpg || DEFAULT_IMAGES.BOOK_COVER,
+                thumbnail: book.coverart_jpg || book.coverart_thumbnail || DEFAULT_IMAGES.BOOK_COVER,
                 author: new PlatformAuthorLink(
                     new PlatformID(PLATFORM, authorUrl, config.id),
                     authorName,
