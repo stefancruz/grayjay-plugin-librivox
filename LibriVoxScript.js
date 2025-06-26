@@ -28,9 +28,9 @@ const URLS = {
 
 // Default images
 const DEFAULT_IMAGES = {
-    BOOK_COVER: 'https://plugins.grayjay.app/LibriVox/assets/default-book-cover.png',
-    AUTHOR_AVATAR: 'https://plugins.grayjay.app/LibriVox/LibriVoxIcon.png',
-    READER_AVATAR: 'https://plugins.grayjay.app/LibriVox/LibriVoxIcon.png'
+    BOOK_COVER: 'https://grayjay-plugin-librivox.pages.dev/assets/default-book-cover.png',
+    AUTHOR_AVATAR: 'https://grayjay-plugin-librivox.pages.dev/LibriVoxIcon.png',
+    READER_AVATAR: 'https://grayjay-plugin-librivox.pages.dev/LibriVoxIcon.png'
 };
 
 // Regular Expressions
@@ -331,11 +331,9 @@ source.getContentDetails = function (url) {
             duration
         }));
 
-
-        debugger;
+        
     }
-
-    debugger;
+   
 
     if(chapter.section_id) {
         
@@ -880,7 +878,7 @@ function getAuthorAudiobooks(url) {
             return new PlatformPlaylist({
                 id: new PlatformID(PLATFORM, `${URLS.AUDIOBOOK_BASE}/${book.id}`, config.id),
                 name: book.title,
-                thumbnail: book.coverart_jpg || DEFAULT_IMAGES.AUDIOBOOK_COVER,
+                thumbnail: book.coverart_jpg || DEFAULT_IMAGES.BOOK_COVER,
                 author: new PlatformAuthorLink(
                     new PlatformID(PLATFORM, authorUrl, config.id),
                     authorName,
