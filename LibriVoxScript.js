@@ -869,6 +869,9 @@ function getAuthorAudiobooks(url) {
         const data = JSON.parse(res.body);
         const books = data.books || [];
         
+        // Sort books by ID in descending order (most recent first)
+        books.sort((a, b) => (b.id || 0) - (a.id || 0));
+        
         const playlists = books.map(book => {
             const author = book.authors?.[0] || { first_name: '', last_name: '', id: '' };
             const authorName = `${author.first_name || ''} ${author.last_name || ''}`.trim() || 'Unknown Author';
