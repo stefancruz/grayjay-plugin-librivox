@@ -55,8 +55,7 @@ const REQUEST_HEADERS_API = {
 let config = {};
 let state = {
     authors: [],
-    readers: {}, // Cache for reader data
-    latestReleaseIds: new Set() // Track the IDs of latest releases
+    readers: {} // Cache for reader data
 };
 
 let settings = {}
@@ -85,24 +84,15 @@ source.enable = function (conf, set, saveStateStr) {
         try {
             state = JSON.parse(saveStateStr);
             
-            // Ensure latestReleaseIds is a Set
-            if (state.latestReleaseIds && Array.isArray(state.latestReleaseIds)) {
-                state.latestReleaseIds = new Set(state.latestReleaseIds);
-            } else {
-                state.latestReleaseIds = new Set();
-            }
-            
             // Ensure readers object exists
             if (!state.readers) {
                 state.readers = {};
             }
         } catch (e) {
             bridge.log('Failed to restore state: ' + e.message);
-            state.latestReleaseIds = new Set();
             state.readers = {};
         }
     } else {
-        state.latestReleaseIds = new Set();
         state.readers = {};
     }
 };
@@ -112,12 +102,7 @@ source.enable = function (conf, set, saveStateStr) {
  * @returns {string} State as JSON string
  */
 source.saveState = function () {
-    // Convert Set to Array for JSON serialization
-    const stateToSave = {
-        ...state,
-        latestReleaseIds: Array.from(state.latestReleaseIds)
-    };
-    return JSON.stringify(stateToSave);
+    return JSON.stringify(state);
 };
 
 /**
@@ -388,12 +373,9 @@ class HomeContentPager extends ContentPager {
                 const data = JSON.parse(resp.body);
                 
                 if (data.books && data.books.length > 0) {
-                    // Filter out any books that are latest releases
                     const newBooks = data.books
                         .map(audiobookToPlaylist)
-                        .filter(book => {
-                            return book && book.id && !state.latestReleaseIds.has(book.id.value);
-                        });
+                        .filter(book => book && book.id);
                     
                     // Add new books to results
                     this.results = [...this.results, ...newBooks];
