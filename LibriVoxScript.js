@@ -15,13 +15,9 @@ const URLS = {
     READER_BASE: 'https://librivox.org/reader',
     
     API_AUDIOBOOKS_ALL: 'https://librivox-api.openaudiobooks.org/api/feed/audiobooks?format=json&extended=1&coverart=1&sort_field=id&sort_order=desc',
-    API_AUDIOBOOKS_BY_TITLE: 'https://librivox-api.openaudiobooks.org/api/feed/audiobooks/title',
-    API_AUDIOBOOKS_BY_AUTHOR: 'https://librivox-api.openaudiobooks.org/api/feed/audiobooks/author',
     API_AUDIOBOOKS_DETAILS: 'https://librivox-api.openaudiobooks.org/api/feed/audiobooks/id/{audioBookId}?format=json&extended=1&coverart=1',
-    API_AUTHORS: 'https://librivox-api.openaudiobooks.org/api/feed/authors?format=json',
     API_AUTHORS_SEARCH : (id) => `https://librivox-api.openaudiobooks.org/api/feed/authors/id/${id}?format=json`,
 
-    ADVANCED_SEARCH: 'https://librivox.org/advanced_search',
     ARCHIVE_VIEWS: 'https://be-api.us.archive.org/views/v1/short',
     READER_SEARCH: 'https://librivox.org/reader/get_results'
 };
@@ -54,7 +50,6 @@ const REQUEST_HEADERS_API = {
 // Plugin State
 let config = {};
 let state = {
-    authors: [],
     readers: {} // Cache for reader data
 };
 
@@ -842,7 +837,7 @@ function getAuthorAudiobooks(url) {
             const internalUrl =  `https://grayjay.internal/librivox/book?id=${book.id}`;
             
             return new PlatformPlaylist({
-                id: new PlatformID(PLATFORM, `${URLS.AUDIOBOOK_BASE}/${book.id}`, config.id),
+                id: new PlatformID(PLATFORM, book.id.toString(), config.id),
                 name: book.title,
                 thumbnail: book.coverart_jpg || book.coverart_thumbnail || DEFAULT_IMAGES.BOOK_COVER,
                 author: new PlatformAuthorLink(
@@ -933,79 +928,6 @@ function getAudiobookDetails(url) {
     });
 }
 
-/**
- * Get chapter details
- * @param {string} url Chapter URL
- * @returns {PlatformVideoDetails} Chapter details
- */
-function getChapterDetails(url) {
-    const meta = new URL(url);
-    const chapterId = meta.searchParams.get("chapter");
-    const playlistInfo = getAudiobookCachedDetails(url);
-    const chapter = playlistInfo.chapters.find(c => c.chapterId == chapterId);
-    
-    if (!chapter) {
-        throw new ScriptException(`Chapter not found: ${chapterId}`);
-    }
-    
-    // Format author information with links
-    let authorsText = "";
-    if (playlistInfo.authors && Array.isArray(playlistInfo.authors) && playlistInfo.authors.length > 0) {
-        authorsText = "Author" + (playlistInfo.authors.length > 1 ? "s" : "") + ": ";
-        authorsText += playlistInfo.authors.map(author => {
-            const authorUrl = author.url || (author.id ? `${URLS.AUTHOR_BASE}/${author.id}` : '');
-            if (authorUrl) {
-                return `<a href="${authorUrl}">${author.name}</a>`;
-            }
-            return author.name;
-        }).join(", ");
-    } else if (playlistInfo.authorName && playlistInfo.authorUrl) {
-        // Fallback for single author stored in legacy format
-        authorsText = `Author: <a href="${playlistInfo.authorUrl}">${playlistInfo.authorName}</a>`;
-    }
-    
-    // Format readers information with links
-    let readersText = "";
-    if (chapter.readers && chapter.readers.length > 0) {
-        readersText = "\n\nRead by: ";
-        readersText += chapter.readers.map(reader => {
-            if (reader.url) {
-                return `<a href="${reader.url}">${reader.name}</a>`;
-            }
-            return reader.name;
-        }).join(", ");
-    }
-    
-    // Create combined description
-    const combinedDescription = `${playlistInfo.description || ''}\n\n${authorsText}${readersText}`;
-    
-    const sources = [
-        new AudioUrlSource({
-            name: 'audio',
-            container: 'audio/mpeg',
-            codec: 'mp4a.40.2',
-            url: chapter.chapterFile,
-            language: 'Unknown',
-        }),
-    ];
-    
-    return new PlatformVideoDetails({
-        id: new PlatformID(PLATFORM, url, config.id),
-        name: chapter.chapterName,
-        description: combinedDescription,
-        author: new PlatformAuthorLink(
-            new PlatformID(PLATFORM, playlistInfo.authorUrl, config.id),
-            playlistInfo.authorName,
-            playlistInfo.authorUrl,
-            playlistInfo?.authorThumbnailUrl ?? ''
-        ),
-        url: url,
-        duration: chapter.duration,
-        thumbnails: new Thumbnails([new Thumbnail(playlistInfo.bookCoverUrl)]),
-        video: new UnMuxVideoSourceDescriptor([], sources),
-        viewCount: playlistInfo.viewCount
-    });
-}
 
 /**
  * Extract page numbers from pagination HTML
@@ -1239,40 +1161,6 @@ function fetchAudiobookDetailsFromHtml(url) {
 
 // ====================== CONVERSION FUNCTIONS ======================
 
-/**
- * Format author data into a consistent structure
- * @param {Object} a Author data from API
- * @returns {Object} Formatted author data
- */
-function formatAuthorData(a) {
-    const name = `${a.first_name || ''} ${a.last_name || ''}`.trim() || 'Unknown Author';
-    const hasAge = a.dob && a.dod;
-    let estimatedAge;
-    
-    if (hasAge) {
-        const dobYear = parseInt(a.dob);
-        const dodYear = parseInt(a.dod);
-        estimatedAge = isNaN(dobYear) || isNaN(dodYear) ? null : dodYear - dobYear;
-    }
-    
-    const displayName = hasAge ? `${name} (${a.dob} - ${a.dod})` : name;
-    
-    return {
-        authorThumbnailUrl: a.image_url || DEFAULT_IMAGES.AUTHOR_AVATAR,
-        description: a.description || '',
-        id: a.id,
-        dob: a.dob,
-        dod: a.dod,
-        first_name: a.first_name?.trim() || '',
-        last_name: a.last_name?.trim() || '',
-        url: `${URLS.AUTHOR_BASE}/${a.id}`,
-        name,
-        displayName,
-        estimatedAge,
-        displayEstimatedAge: estimatedAge ? `${estimatedAge} years old` : '',
-        links: {}
-    };
-}
 
 /**
  * Format chapter data into a consistent structure
@@ -1492,38 +1380,6 @@ function objectToUrlEncodedString(obj) {
     return encodedParams.join('&');
 }
 
-/**
- * Parse JSON from URL with error handling
- * @param {string} url URL to fetch JSON from
- * @param {Object} opts Options (headers, authentication)
- * @returns {Array} [error, data]
- */
-function restWebRequest(url, opts = { is_authenticated: false, headers: {} }) {
-    const headers = opts.headers || {}; // Allow custom headers
-    let response;
-
-    if(!opts.is_authenticated) {
-        opts.is_authenticated = false;
-    }
-    
-    try {
-        
-        response = http.GET(url, headers, opts.is_authenticated);
-        if (response.isOk) {
-            const data = JSON.parse(response.body);
-            return [null, data];
-        } else {
-            // Handle non-OK responses
-            return [new ScriptException(`Request failed with status: ${response.code}`), null];
-        }
-    } catch (error) {
-        // Differentiate parsing errors from others
-        if (response && !response.isOk) {
-            return [new ScriptException(`Request failed: ${response.code} - ${error.message}`), null];
-        }
-        return [error, null];
-    }
-}
 
 
 /**
@@ -1558,16 +1414,6 @@ function safeAttribute(element, attr) {
 function logError(message) {
     if (IS_TESTING) {
         bridge.log(`[LibriVox Error] ${message}`);
-    }
-}
-
-/**
- * Log an info message
- * @param {string} message Info message
- */
-function log(message) {
-    if (IS_TESTING) {
-        bridge.log(`[LibriVox] ${message}`);
     }
 }
 
