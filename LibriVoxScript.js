@@ -17,6 +17,9 @@ const URLS = {
     API_AUDIOBOOKS_ALL: 'https://librivox-api.openaudiobooks.org/api/feed/audiobooks?format=json&extended=1&coverart=1&sort_field=id&sort_order=desc',
     API_AUDIOBOOKS_DETAILS: 'https://librivox-api.openaudiobooks.org/api/feed/audiobooks/id/{audioBookId}?format=json&extended=1&coverart=1',
     API_AUTHORS_SEARCH : (id) => `https://librivox-api.openaudiobooks.org/api/feed/authors/id/${id}?format=json`,
+    API_READERS_DETAILS: (id) => `https://librivox-api.openaudiobooks.org/api/feed/readers?id=${id}&format=json`,
+    API_READERS_WITH_STATS: (id) => `https://librivox-api.openaudiobooks.org/api/feed/readers/with_stats?id=${id}&format=json`,
+    API_READERS_SECTIONS: (id) => `https://librivox-api.openaudiobooks.org/api/feed/readers/${id}/sections?format=json`,
 
     ARCHIVE_VIEWS: 'https://be-api.us.archive.org/views/v1/short',
     READER_SEARCH: 'https://librivox.org/reader/get_results'
@@ -451,7 +454,7 @@ class SearchAudiobooksPager extends VideoPager {
 }
 
 /**
- * Reader audiobooks pager - provides proper pagination for a reader's audiobook list
+ * Reader audiobooks pager - provides proper pagination for a reader's audiobook list using API
  */
 class ReaderAudiobooksPager extends VideoPager {
     constructor({ videos = [], hasMore = true, context = {} } = {}) {
@@ -461,6 +464,8 @@ class ReaderAudiobooksPager extends VideoPager {
     nextPage() {
         const currentPage = this.context.page || 1;
         const readerId = this.context.readerId;
+        const limit = 50; // Items per page
+        const offset = (currentPage - 1) * limit;
         
         if (!readerId) {
             logError('Reader ID is required for ReaderAudiobooksPager');
@@ -471,22 +476,13 @@ class ReaderAudiobooksPager extends VideoPager {
             });
         }
         
-        const searchUrl = `${URLS.READER_SEARCH}?primary_key=${readerId}&search_category=reader&sub_category=&search_page=${currentPage}&search_order=catalog_date&project_type=either`;
-        const resp = http.GET(searchUrl, REQUEST_HEADERS);
-        
-        if (!resp.isOk) {
-            logError(`Failed to fetch reader books: ${resp.code}`);
-            return new ReaderAudiobooksPager({
-                videos: [],
-                hasMore: false,
-                context: this.context
-            });
-        }
-        
         try {
-            const body = JSON.parse(resp.body);
+            // Get sections narrated by this reader using the API
+            const sectionsUrl = `${URLS.API_READERS_SECTIONS(readerId)}&limit=${limit}&offset=${offset}`;
+            const resp = http.GET(sectionsUrl, REQUEST_HEADERS_API);
             
-            if (body.status !== "SUCCESS" || !body.results) {
+            if (!resp.isOk) {
+                logError(`Failed to fetch reader sections: ${resp.code}`);
                 return new ReaderAudiobooksPager({
                     videos: [],
                     hasMore: false,
@@ -494,18 +490,49 @@ class ReaderAudiobooksPager extends VideoPager {
                 });
             }
             
-            const results = extractBookData(body.results)
+            const sectionsData = JSON.parse(resp.body);
+            
+            // Check the nested structure: sectionsData.sections.sections
+            const sections = sectionsData.sections?.sections;
+            if (!sections || !Array.isArray(sections)) {
+                return new ReaderAudiobooksPager({
+                    videos: [],
+                    hasMore: false,
+                    context: this.context
+                });
+            }
+            
+            // Group sections by audiobook to create unique audiobook entries
+            const audiobookMap = new Map();
+            
+            sections.forEach(section => {
+                if (section.audiobook_id && section.audiobook_title) {
+                    const audiobookId = section.audiobook_id;
+                    
+                    if (!audiobookMap.has(audiobookId)) {
+                        // Create audiobook entry from section data (now includes author info from API)
+                        const audiobook = {
+                            id: audiobookId,
+                            title: section.audiobook_title,
+                            description: section.audiobook_description || `Audiobook narrated in part by this reader`,
+                            url_librivox: section.audiobook_url || `https://librivox.org/audiobook-${audiobookId}`,
+                            language: section.language || 'English',
+                            coverart_jpg: DEFAULT_IMAGES.BOOK_COVER,
+                            authors: section.audiobook_authors || []
+                        };
+                        
+                        audiobookMap.set(audiobookId, audiobook);
+                    }
+                }
+            });
+            
+            // Convert audiobook map to playlist array
+            const results = Array.from(audiobookMap.values())
                 .filter(x => !REGEX.COLLECTION.test(x.url_librivox))
                 .map(audiobookToPlaylist);
-                
-            // Parse pagination info to determine if there are more pages
-            let hasMorePages = false;
             
-            if (body.pagination) {
-                // Check if there's a link to a page number higher than the current page
-                const pageNumbers = extractPageNumbers(body.pagination);
-                hasMorePages = pageNumbers.some(num => num > currentPage);
-            }
+            // Determine if there are more pages
+            const hasMorePages = sections.length === limit;
             
             return new ReaderAudiobooksPager({
                 videos: results,
@@ -515,8 +542,9 @@ class ReaderAudiobooksPager extends VideoPager {
                     page: currentPage + 1 
                 }
             });
+            
         } catch (error) {
-            logError(`Error parsing reader books: ${error.message}`);
+            logError(`Error fetching reader audiobooks from API: ${error.message}`);
             return new ReaderAudiobooksPager({
                 videos: [],
                 hasMore: false,
@@ -718,92 +746,92 @@ function getReaderChannel(url) {
 }
 
 /**
- * Fetch reader information from the reader's profile page
+ * Fetch reader information from the API
  * @param {string} readerId Reader ID
  * @returns {Object} Reader information
  */
 function fetchReaderInfo(readerId) {
-    const url = `${URLS.READER_BASE}/${readerId}`;
-    const resp = http.GET(url, REQUEST_HEADERS);
-    
-    if (!resp.isOk) {
-        return { name: `Reader ${readerId}`, bookCount: 0 };
-    }
-    
     try {
-        const htmlElement = domParser.parseFromString(resp.body, 'text/html');
+        // First try to get reader with statistics
+        const statsUrl = URLS.API_READERS_WITH_STATS(readerId);
+        const statsResp = http.GET(statsUrl, REQUEST_HEADERS_API);
         
-        // Extract reader details from the profile page
-        const nameElement = htmlElement.querySelector('.page-header-wrap h1');
-        const readerName = nameElement ? nameElement.textContent.trim() : `Reader ${readerId}`;
-        
-        // Extract additional reader information
-        const catalogNameElement = htmlElement.querySelector('.page-header-half p:nth-child(1)');
-        const forumNameElement = htmlElement.querySelector('.page-header-half p:nth-child(2)');
-        
-        const catalogName = catalogNameElement ? 
-            catalogNameElement.textContent.replace('Catalog name:', '').trim() : '';
-        const forumName = forumNameElement ? 
-            forumNameElement.textContent.replace('Forum name:', '').trim() : '';
-        
-        // Find the elements with the section and match counts
-        // The page structure has two .page-header-half divs - we need to check the second one
-        const infoElements = htmlElement.querySelectorAll('.page-header-half');
-        let totalSections = 0;
-        let totalMatches = 0;
-        
-        if (infoElements.length > 1) {
-            const secondHalf = infoElements[1];
-            const sectionElement = secondHalf.querySelector('p:nth-child(1)');
-            const matchesElement = secondHalf.querySelector('p:nth-child(2)');
-            
-            if (sectionElement) {
-                const sectionsText = sectionElement.textContent;
-                const sectionsMatch = sectionsText.match(/Total sections:\s*(\d+)/);
-                if (sectionsMatch && sectionsMatch[1]) {
-                    totalSections = parseInt(sectionsMatch[1]);
+        if (statsResp.isOk) {
+            const statsData = JSON.parse(statsResp.body);
+            if (statsData.readers && statsData.readers.length > 0) {
+                const reader = statsData.readers[0];
+                
+                // Create a description using the available information
+                let description = `LibriVox volunteer reader`;
+                if (reader.display_name) {
+                    description = `LibriVox reader ${reader.display_name}`;
                 }
-            }
-            
-            if (matchesElement) {
-                const matchesText = matchesElement.textContent;
-                const matchesMatch = matchesText.match(/Total matches:\s*(\d+)/);
-                if (matchesMatch && matchesMatch[1]) {
-                    totalMatches = parseInt(matchesMatch[1]);
+                
+                if (reader.section_count > 0) {
+                    description += ` who has recorded ${reader.section_count} sections`;
                 }
+                
+                if (reader.audiobook_count > 0) {
+                    description += ` across ${reader.audiobook_count} audiobooks`;
+                }
+                
+                description += '.';
+                
+                return {
+                    name: reader.display_name || `Reader ${readerId}`,
+                    catalogName: reader.display_name || `Reader ${readerId}`,
+                    forumName: '',
+                    totalSections: reader.section_count || 0,
+                    totalMatches: reader.audiobook_count || 0,
+                    description: description,
+                    bookCount: reader.audiobook_count || 0
+                };
             }
         }
         
-        // Create a description using the available information
-        let description = '';
-        if (catalogName) {
-            description += `LibriVox reader known as ${catalogName}. `;
+        // Fallback to basic reader details if stats are not available
+        const detailsUrl = URLS.API_READERS_DETAILS(readerId);
+        const detailsResp = http.GET(detailsUrl, REQUEST_HEADERS_API);
+        
+        if (detailsResp.isOk) {
+            const detailsData = JSON.parse(detailsResp.body);
+            if (detailsData.readers && detailsData.readers.length > 0) {
+                const reader = detailsData.readers[0];
+                
+                return {
+                    name: reader.display_name || `Reader ${readerId}`,
+                    catalogName: reader.display_name || `Reader ${readerId}`,
+                    forumName: '',
+                    totalSections: 0,
+                    totalMatches: reader.project_count || 0,
+                    description: `LibriVox volunteer reader ${reader.display_name || ''}.`.trim(),
+                    bookCount: reader.project_count || 0
+                };
+            }
         }
         
-        if (totalSections > 0) {
-            description += `Has recorded ${totalSections} sections across various audiobooks. `;
-        }
-        
-        if (totalMatches > 0) {
-            description += `Has participated in ${totalMatches} complete recordings. `;
-        }
-        
-        if (!description) {
-            description = `LibriVox volunteer reader.`;
-        }
-        
-        return {
-            name: readerName,
-            catalogName: catalogName || readerName,
-            forumName: forumName || '',
-            totalSections: totalSections,
-            totalMatches: totalMatches,
-            description: description,
-            bookCount: totalMatches || 0
+        // Ultimate fallback
+        return { 
+            name: `Reader ${readerId}`, 
+            catalogName: `Reader ${readerId}`,
+            forumName: '',
+            totalSections: 0,
+            totalMatches: 0,
+            description: 'LibriVox volunteer reader.',
+            bookCount: 0 
         };
+        
     } catch (error) {
-        logError(`Error parsing reader info: ${error.message}`);
-        return { name: `Reader ${readerId}`, bookCount: 0 };
+        logError(`Error fetching reader info from API: ${error.message}`);
+        return { 
+            name: `Reader ${readerId}`, 
+            catalogName: `Reader ${readerId}`,
+            forumName: '',
+            totalSections: 0,
+            totalMatches: 0,
+            description: 'LibriVox volunteer reader.',
+            bookCount: 0 
+        };
     }
 }
 /**
