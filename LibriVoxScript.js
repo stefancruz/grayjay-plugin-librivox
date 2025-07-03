@@ -603,13 +603,21 @@ function searchAuthors(query) {
             if (author.wikipediaurl) {
                 links['Wikipedia'] = author.wikipediaurl;
             }
-            
-            if (author?.externalids?.isni) {
-                links['ISNI'] = `https://isni.org/isni/${author.externalids.isni}`;
+
+            if (author.wikidata_id) {
+                links['Wikidata'] = `https://www.wikidata.org/wiki/${author.wikidata_id}`;
             }
             
-            if (author?.externalids?.viaf) {
-                links['Viaf'] = `https://viaf.org/en/viaf/${author.externalids.viaf}/`;
+            if (author.isni_id) {
+                links['ISNI'] = `https://isni.org/isni/${author.isni_id}`;
+            }
+            
+            if (author.viaf_id) {
+                links['Viaf'] = `https://viaf.org/en/viaf/${author.viaf_id}/`;
+            }
+
+            if(author?.openlibrary_id) {
+                links['Open Library'] = `https://openlibrary.org/authors/${author.openlibrary_id}/`
             }
             
             return new PlatformChannel({
@@ -680,16 +688,20 @@ function getAuthorChannel(url) {
         links['Wikipedia'] = author.wikipediaurl
     }
 
-    if(author?.externalids?.isni) {
-        links['ISNI'] = `https://isni.org/isni/${author.externalids.isni}`
+    if (author.wikidata_id) {
+        links['Wikidata'] = `https://www.wikidata.org/wiki/${author.wikidata_id}`;
+    }
+    
+    if (author.isni_id) {
+        links['ISNI'] = `https://isni.org/isni/${author.isni_id}`;
+    }
+    
+    if (author.viaf_id) {
+        links['Viaf'] = `https://viaf.org/en/viaf/${author.viaf_id}/`;
     }
 
-    if(author?.externalids?.viaf) {
-        links['Viaf'] = `https://viaf.org/en/viaf/${author.externalids.viaf}/`
-    }
-
-    if(author?.externalids?.openlibrary) {
-        links['Open Library'] = `https://openlibrary.org/authors/${author.externalids.openlibrary}/`
+    if(author?.openlibrary_id) {
+        links['Open Library'] = `https://openlibrary.org/authors/${author.openlibrary_id}/`
     }
     
     return new PlatformChannel({
