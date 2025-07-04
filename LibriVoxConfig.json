@@ -7,7 +7,7 @@
   "sourceUrl": "https://grayjay-plugin-librivox.pages.dev/LibriVoxConfig.json",
   "repositoryUrl": "",
   "scriptUrl": "./LibriVoxScript.js",
-  "version": 17,
+  "version": 18,
   "iconUrl": "./LibriVoxIcon.png",
   "id": "5c2f78d4-6eec-4f3f-b25b-28d885aeb147",
   "scriptSignature": "",

@@ -623,6 +623,18 @@ function searchAuthors(query) {
             if(author?.project_gutenberg_id) {
                 links['Project Gutenberg'] = `https://www.gutenberg.org/ebooks/author/${author.project_gutenberg_id}/`
             }
+
+            if(author?.goodreads_id) {
+                links['Goodreads'] = `https://www.goodreads.com/author/show/${author.goodreads_id}/`
+            }
+
+            if(author?.amazon_id) {
+                links['Amazon'] = `https://www.amazon.com/stores/author/${author.amazon_id}/`
+            }
+
+            if(author?.librarything_id) {
+                links['Librarything'] = `https://www.librarything.com/author/${author.librarything_id}/`
+            }
             
             return new PlatformChannel({
                 id: new PlatformID(PLATFORM, authorUrl, config.id),
@@ -688,28 +700,40 @@ function getAuthorChannel(url) {
         "LibriVox" : `${URLS.AUTHOR_BASE}/${author.id}`
     };
 
-    if(author.wikipediaurl) {
-        links['Wikipedia'] = author.wikipediaurl
+    if (author.wikipediaurl) {
+        links['Wikipedia'] = author.wikipediaurl;
     }
 
     if (author.wikidata_id) {
         links['Wikidata'] = `https://www.wikidata.org/wiki/${author.wikidata_id}`;
     }
-    
+
     if (author.isni_id) {
         links['ISNI'] = `https://isni.org/isni/${author.isni_id}`;
     }
-    
+
     if (author.viaf_id) {
         links['Viaf'] = `https://viaf.org/en/viaf/${author.viaf_id}/`;
     }
 
-    if(author?.openlibrary_id) {
+    if (author?.openlibrary_id) {
         links['Open Library'] = `https://openlibrary.org/authors/${author.openlibrary_id}/`
     }
 
-    if(author?.project_gutenberg_id) {
+    if (author?.project_gutenberg_id) {
         links['Project Gutenberg'] = `https://www.gutenberg.org/ebooks/author/${author.project_gutenberg_id}/`
+    }
+
+    if (author?.goodreads_id) {
+        links['Goodreads'] = `https://www.goodreads.com/author/show/${author.goodreads_id}/`
+    }
+
+    if (author?.amazon_id) {
+        links['Amazon'] = `https://www.amazon.com/stores/author/${author.amazon_id}/`
+    }
+
+    if (author?.librarything_id) {
+        links['Librarything'] = `https://www.librarything.com/author/${author.librarything_id}/`
     }
     
     return new PlatformChannel({
