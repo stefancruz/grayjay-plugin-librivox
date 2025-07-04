@@ -619,6 +619,10 @@ function searchAuthors(query) {
             if(author?.openlibrary_id) {
                 links['Open Library'] = `https://openlibrary.org/authors/${author.openlibrary_id}/`
             }
+
+            if(author?.project_gutenberg_id) {
+                links['Project Gutenberg'] = `https://openlibrary.org/authors/${author.project_gutenberg_id}/`
+            }
             
             return new PlatformChannel({
                 id: new PlatformID(PLATFORM, authorUrl, config.id),
@@ -702,6 +706,10 @@ function getAuthorChannel(url) {
 
     if(author?.openlibrary_id) {
         links['Open Library'] = `https://openlibrary.org/authors/${author.openlibrary_id}/`
+    }
+
+    if(author?.project_gutenberg_id) {
+        links['Project Gutenberg'] = `https://openlibrary.org/authors/${author.project_gutenberg_id}/`
     }
     
     return new PlatformChannel({
