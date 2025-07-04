@@ -621,7 +621,7 @@ function searchAuthors(query) {
             }
 
             if(author?.project_gutenberg_id) {
-                links['Project Gutenberg'] = `https://openlibrary.org/authors/${author.project_gutenberg_id}/`
+                links['Project Gutenberg'] = `https://www.gutenberg.org/ebooks/author/${author.project_gutenberg_id}/`
             }
             
             return new PlatformChannel({
@@ -709,7 +709,7 @@ function getAuthorChannel(url) {
     }
 
     if(author?.project_gutenberg_id) {
-        links['Project Gutenberg'] = `https://openlibrary.org/authors/${author.project_gutenberg_id}/`
+        links['Project Gutenberg'] = `https://www.gutenberg.org/ebooks/author/${author.project_gutenberg_id}/`
     }
     
     return new PlatformChannel({
