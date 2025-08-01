@@ -15,7 +15,8 @@ const URLS = {
     READER_BASE: 'https://librivox.org/reader',
     
     API_AUDIOBOOKS_ALL: 'https://librivox-api.openaudiobooks.org/api/feed/audiobooks?format=json&extended=1&coverart=1&sort_field=id&sort_order=desc',
-    API_AUDIOBOOKS_DETAILS: 'https://librivox-api.openaudiobooks.org/api/feed/audiobooks/id/{audioBookId}?format=json&extended=1&coverart=1',
+    API_AUDIOBOOKS_DETAILS_BY_ID: 'https://librivox-api.openaudiobooks.org/api/feed/audiobooks/id/{audioBookId}?format=json&extended=1&coverart=1',
+    API_AUDIOBOOKS_DETAILS_BY_SLUG: 'https://librivox-api.openaudiobooks.org/api/feed/audiobooks/slug/{slug}?format=json&extended=1&coverart=1',
     API_AUTHORS_SEARCH : (id) => `https://librivox-api.openaudiobooks.org/api/feed/authors/id/${id}?format=json`,
     API_READERS_DETAILS: (id) => `https://librivox-api.openaudiobooks.org/api/feed/readers?id=${id}&format=json`,
     API_READERS_WITH_STATS: (id) => `https://librivox-api.openaudiobooks.org/api/feed/readers/with_stats?id=${id}&format=json`,
@@ -243,14 +244,18 @@ source.getContentDetails = function (url) {
     
     // Get audiobook details
     let playlistInfo;
+
+    let apiUrl;
+
     if (bookId) {
-        playlistInfo = fetchAudiobookDetailsFromApi(bookId, url);
+        apiUrl = URLS.API_AUDIOBOOKS_DETAILS_BY_ID.replace('{audioBookId}', bookId);
     } else {
-        //TODO
-        //Extract slug
+        const slug = extractSlug(url);
         //get book it by slug
-        playlistInfo = fetchAudiobookDetailsFromHtml(url);
+        apiUrl = URLS.API_AUDIOBOOKS_DETAILS_BY_SLUG.replace('{slug}', slug);
     }
+
+    playlistInfo = fetchAudiobookDetailsFromApi(apiUrl);
     
     // Validate playlistInfo has chapters
     if (!playlistInfo || !Array.isArray(playlistInfo.chapters)) {
@@ -331,6 +336,17 @@ source.getContentDetails = function (url) {
         viewCount: playlistInfo.viewCount
     });
 };
+
+function extractSlug(url) {
+    // Extract the book slug from various LibriVox URL formats:
+    // - /book-title/
+    // - /book-title
+    // - /book-title-by-author/
+    // - /book-title/?params
+    // - /book-title-by-author/?params
+    const match = url.match(/\/([a-zA-Z0-9-]+)(?:-by-[a-zA-Z0-9-]+)?\/?(?:\?|$)/);
+    return match ? match[1] : null;
+}
 
 // ====================== CUSTOM PAGER IMPLEMENTATIONS ======================
 
@@ -1035,12 +1051,17 @@ function extractPageNumbers(paginationHtml) {
 function getAudiobookCachedDetails(url) {
     
     const audioBookId = extractId(url);
+
+    let apiUrl;
     
     if (audioBookId) {
-        return fetchAudiobookDetailsFromApi(audioBookId, url);
+        apiUrl = URLS.API_AUDIOBOOKS_DETAILS_BY_ID.replace('{audioBookId}', audioBookId);
     } else {
-        return fetchAudiobookDetailsFromHtml(url);
+        const slug = extractSlug(url);
+        apiUrl = URLS.API_AUDIOBOOKS_DETAILS_BY_SLUG.replace('{slug}', slug);
     }
+
+    return fetchAudiobookDetailsFromApi(apiUrl);
 }
 
 /**
@@ -1049,8 +1070,8 @@ function getAudiobookCachedDetails(url) {
  * @param {string} url Audiobook URL
  * @returns {Object} Audiobook details
  */
-function fetchAudiobookDetailsFromApi(audioBookId, url) {
-    const apiUrl = URLS.API_AUDIOBOOKS_DETAILS.replace('{audioBookId}', audioBookId);
+function fetchAudiobookDetailsFromApi(apiUrl) {
+    
     const res = http.GET(apiUrl, REQUEST_HEADERS_API);
     
     if (!res.isOk) {
@@ -1133,95 +1154,6 @@ function fetchViewCount(iarchive_id) {
     return -1;
 }
 
-/**
- * Fetch audiobook details by parsing HTML
- * @param {string} url Audiobook URL
- * @returns {Object} Audiobook details
- */
-function fetchAudiobookDetailsFromHtml(url) {
-    try {
-        const resp = http.GET(url, REQUEST_HEADERS);
-        if (!resp.isOk) {
-            throw new ScriptException(`Failed to fetch audiobook page: ${resp.code}`);
-        }
-        
-        const htmlElement = domParser.parseFromString(resp.body, 'text/html');
-        
-        // Extract elements
-        const authorElements = htmlElement.querySelectorAll('.book-page-author a');
-        let [coverElement] = htmlElement.querySelectorAll('.book-page-image img');
-        let [chaptersTable] = htmlElement.querySelectorAll('.chapter-download tbody');
-        let chaptersElements = chaptersTable ? Array.from(chaptersTable.querySelectorAll('tr')) : [];
-        
-        // Extract book details
-        let [titleElement] = htmlElement.querySelectorAll('.content-wrap h1');
-        let [descriptionElement] = htmlElement.querySelectorAll('.content-wrap .description');
-        
-        // Process authors
-        let authors = Array.from(authorElements).map(authorElement => {
-            return {
-                name: authorElement?.textContent?.trim() || 'Unknown Author',
-                url: authorElement?.getAttribute('href') || '',
-                id: extractChannelId(authorElement?.getAttribute('href') || '')
-            };
-        });
-        
-        // If no authors found, create a default one
-        if (authors.length === 0) {
-            authors = [{
-                name: 'Unknown Author',
-                url: '',
-                id: null
-            }];
-        }
-        
-        const title = titleElement?.textContent?.trim() || 'Unknown Title';
-        const description = descriptionElement?.textContent?.trim() || '';
-        const bookCoverUrl = coverElement?.getAttribute('src') || DEFAULT_IMAGES.BOOK_COVER;
-        
-        // Process chapters in one pass
-        const chapters = chaptersElements.map((chapterTableRow, idx) => {
-            let [chapterNameLink] = chapterTableRow.querySelectorAll('a.chapter-name');
-            const chapterName = chapterNameLink?.textContent?.trim() || `Chapter ${idx+1}`;
-            const chapterFile = chapterNameLink?.getAttribute('href') || '';
-            const tds = chapterTableRow.querySelectorAll('td');
-            const durationText = tds[tds.length - 1]?.textContent?.trim() || '0:0:0';
-            
-            // Handle multiple readers in the reader column
-            const readerLinks = tds[2]?.querySelectorAll('a') || [];
-            const readers = Array.from(readerLinks).map(readerElement => ({
-                name: readerElement?.textContent?.trim() || '',
-                url: readerElement?.getAttribute('href') || '',
-                id: extractReaderIdFromUrl(readerElement?.getAttribute('href') || '')
-            }));
-            
-            return {
-                chapterId: idx,
-                chapterName,
-                chapterFile,
-                duration: timeToSeconds(durationText),
-                readers: readers.length > 0 ? readers : [{ name: '', url: '', id: '' }]
-            };
-        });
-        
-        // Cache and return the result
-        return { 
-            title, 
-            description, 
-            chapters, 
-            authorName: authors[0].name,   // Primary author for backward compatibility
-            authorUrl: authors[0].url,     // Primary author URL
-            authors: authors,              // All authors
-            bookCoverUrl,
-            authorThumbnailUrl: DEFAULT_IMAGES.AUTHOR_AVATAR,
-            viewCount: -1
-        };
-        
-    } catch (error) {
-        logError(`Error parsing HTML: ${error.message}`);
-        throw new ScriptException(`Failed to parse audiobook page: ${error.message}`);
-    }
-}
 
 // ====================== CONVERSION FUNCTIONS ======================
 
@@ -1301,77 +1233,6 @@ function extractReaderIdFromUrl(url) {
     const match = url.match(REGEX.READER_CHANNEL);
     return match ? match[1] : null;
 }
-/**
- * Extract book data from HTML
- * @param {string} htmlString HTML string
- * @returns {Array} Array of book data objects
- */
-function extractBookData(htmlString) {
-    // Input validation
-    if (!htmlString || typeof htmlString !== 'string') {
-        throw new ScriptException('Invalid input: htmlString must be a non-empty string');
-    }
-    
-    const doc = domParser.parseFromString(htmlString, 'text/html');
-    
-    // Early validation of parsed document
-    let [catalogResult] = doc.querySelectorAll('li.catalog-result');
-    if (!doc || !catalogResult) {
-        return [];
-    }
-    
-    return Array.from(doc.querySelectorAll('li.catalog-result')).map(book => {
-        // Extract book details with better error handling
-        let [titleElement] = book.querySelectorAll('h3');
-        
-        // Handle nested title structure
-        const bookTitle = titleElement ?
-            titleElement.firstChild?.text?.trim() || safeTextContent(titleElement) :
-            'Unknown Title';
-            
-        // Get author link information
-        let authorUrl = '';
-        try {
-            let [authorLink] = book.querySelectorAll('.book-author a');
-            authorUrl = safeAttribute(authorLink, 'href') || '';
-        } catch (e) {
-            logError(`Error extracting author URL: ${e.message}`);
-        }
-        
-        // Get book URL
-        let [bookCoverLink] = book.querySelectorAll('a.book-cover');
-        let url_librivox = safeAttribute(bookCoverLink, 'href');
-        if (!url_librivox) {
-            let [categoryElement] = book.querySelectorAll('a[data-sub_category]');
-            url_librivox = safeAttribute(categoryElement, 'href') || '';
-        }
-
-        let [coverImageElement] = book.querySelectorAll('a.book-cover img');
-        const coverImage = safeAttribute(coverImageElement, 'src');
-
-        let [authorElement] = book.querySelectorAll('.book-author a');
-        const author = safeTextContent(authorElement);
-
-        let lifeDates;
-        let [lifeDatesElement] = book.querySelectorAll('.dod-dob');  
-
-        if(lifeDatesElement){
-            lifeDates = lifeDatesElement?.text?.replace(/[()]/g, '').trim() || null;
-        }
-
-        return {
-            title: bookTitle,
-            url_librivox: url_librivox,
-            coverImage,
-            authors: [{
-                id: extractChannelId(authorUrl),
-                author,
-                url: authorUrl,
-                lifeDates
-            }]
-        };
-    });
-}
 
 /**
  * Convert time string (hh:mm:ss) to seconds
@@ -1444,32 +1305,6 @@ function objectToUrlEncodedString(obj) {
     return encodedParams.join('&');
 }
 
-
-
-/**
- * Safely extract text content
- * @param {Element} element DOM element
- * @returns {string|null} Text content or null
- */
-function safeTextContent(element) {
-    return element?.textContent?.trim() || null;
-}
-
-/**
- * Safely get attribute
- * @param {Element} element DOM element
- * @param {string} attr Attribute name
- * @returns {string|null} Attribute value or null
- */
-function safeAttribute(element, attr) {
-    try {
-        return element?.getAttribute?.(attr) || null;
-    }
-    catch (e) {
-        bridge.log(`[LibriVox Error] ${e.message}`);
-        return null;
-    }
-}
 
 /**
  * Log an error message
