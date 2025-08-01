@@ -295,23 +295,8 @@ source.getContentDetails = function (url) {
     const duration = chapter.duration;
 
     const sources = [];
-    
-    if (chapter.chapterFile) {
-
-        sources.push(new AudioUrlSource({
-            name: 'audio (archive.org)',
-            container: 'audio/mpeg',
-            codec: 'mp4a.40.2',
-            url: chapter.chapterFile,
-            language: 'Unknown',
-            duration
-        }));
-        
-    }
    
-
     if(chapter.section_id) {
-
         sources.push(new AudioUrlSource({
             name: 'audio (cached v2)',
             container: 'audio/mpeg',
@@ -319,6 +304,17 @@ source.getContentDetails = function (url) {
             url: `https://librivox-api.openaudiobooks.org/api/v2/proxy/${chapter.section_id}.mp3`,
             language: 'Unknown',
             duration,
+        }));
+    }
+
+    if (chapter.chapterFile) {
+        sources.push(new AudioUrlSource({
+            name: 'audio (archive.org)',
+            container: 'audio/mpeg',
+            codec: 'mp4a.40.2',
+            url: chapter.chapterFile,
+            language: 'Unknown',
+            duration
         }));
     }
 
