@@ -246,6 +246,9 @@ source.getContentDetails = function (url) {
     if (bookId) {
         playlistInfo = fetchAudiobookDetailsFromApi(bookId, url);
     } else {
+        //TODO
+        //Extract slug
+        //get book it by slug
         playlistInfo = fetchAudiobookDetailsFromHtml(url);
     }
     
