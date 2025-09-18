@@ -23,8 +23,6 @@ const URLS = {
     API_READERS_SECTIONS: (id) => `https://librivox-api.openaudiobooks.org/api/v3/readers/${id}/sections`,
     API_AUTOCOMPLETE: 'https://librivox-api.openaudiobooks.org/api/v3/search/autocomplete',
 
-
-
     ARCHIVE_VIEWS: 'https://be-api.us.archive.org/views/v1/short',
     READER_SEARCH: 'https://librivox.org/reader/get_results'
 };
@@ -1019,7 +1017,6 @@ function getAudiobookDetails(url) {
         url: internalUrl,
     });
 }
-
 
 /**
  * Extract page numbers from pagination HTML
