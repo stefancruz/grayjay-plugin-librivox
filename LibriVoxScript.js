@@ -21,6 +21,7 @@ const URLS = {
     API_READERS_DETAILS: (id) => `https://librivox-api.openaudiobooks.org/api/feed/readers?id=${id}&format=json`,
     API_READERS_WITH_STATS: (id) => `https://librivox-api.openaudiobooks.org/api/feed/readers/with_stats?id=${id}&format=json`,
     API_READERS_SECTIONS: (id) => `https://librivox-api.openaudiobooks.org/api/feed/readers/${id}/sections?format=json`,
+    API_AUTOCOMPLETE: 'https://librivox-api.openaudiobooks.org/api/autocomplete',
 
     ARCHIVE_VIEWS: 'https://be-api.us.archive.org/views/v1/short',
     READER_SEARCH: 'https://librivox.org/reader/get_results'
@@ -148,6 +149,34 @@ source.search = function (query) {
 source.searchChannels = function (query) {
     return searchAuthors(query);
 };
+
+
+/**
+ * Get search suggestions for autocomplete
+ * @param {string} query Search query
+ * @returns {string[]} Array of suggestion strings
+ */
+source.searchSuggestions = function (query) {
+    if (!query || query.trim().length === 0) {
+        return [];
+    }
+
+    try {
+        const url = `${URLS.API_AUTOCOMPLETE}?q=${encodeURIComponent(query.trim())}`;
+        const resp = http.GET(url, REQUEST_HEADERS_API);
+
+        if (resp.isOk) {
+            const suggestions = JSON.parse(resp.body);
+            return Array.isArray(suggestions) ? suggestions : [];
+        }
+    } catch (error) {
+        if (IS_TESTING) {
+            bridge.log(`Error fetching search suggestions: ${error.message}`);
+        }
+    }
+
+    return [];
+}
 
 /**
  * Check if URL is a channel (author or reader)
