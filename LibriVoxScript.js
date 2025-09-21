@@ -8,23 +8,25 @@
 // ---------------------- Constants ----------------------
 const PLATFORM = 'librivox';
 
+const API_BASE_URL = 'https://librivox-api.openaudiobooks.org';
+
 // API and URL Constants
 const URLS = {
-    BASE: 'https://librivox.org',
+   BASE: 'https://librivox.org',
     AUTHOR_BASE: 'https://librivox.org/author',
     READER_BASE: 'https://librivox.org/reader',
-    API_AUDIOBOOKS_FEED: 'https://librivox-api.openaudiobooks.org/api/v3/audiobooks/feed?sort_field=id&sort_order=desc',
-    API_AUDIOBOOKS_DETAILS: 'https://librivox-api.openaudiobooks.org/api/v3/audiobooks/{audioBookId}',
-    API_AUDIOBOOKS_SEARCH: 'https://librivox-api.openaudiobooks.org/api/v3/audiobooks/search',
-    API_AUTHORS_DETAILS: (id) => `https://librivox-api.openaudiobooks.org/api/v3/authors/${id}`,
-    API_AUTHORS_SEARCH: 'https://librivox-api.openaudiobooks.org/api/v3/authors/search',
-    API_AUTHORS_AUDIOBOOKS: (id) => `https://librivox-api.openaudiobooks.org/api/v3/authors/${id}/audiobooks`,
-    API_READERS_DETAILS: (id) => `https://librivox-api.openaudiobooks.org/api/v3/readers/${id}`,
-    API_READERS_SECTIONS: (id) => `https://librivox-api.openaudiobooks.org/api/v3/readers/${id}/sections`,
-    API_AUTOCOMPLETE: 'https://librivox-api.openaudiobooks.org/api/v3/search/autocomplete',
+    API_AUDIOBOOKS_FEED: `${API_BASE_URL}/api/v3/audiobooks/feed?sort_field=id&sort_order=desc`,
+    API_AUDIOBOOKS_DETAILS: `${API_BASE_URL}/api/v3/audiobooks/{audioBookId}`,
+    API_AUDIOBOOKS_SEARCH: `${API_BASE_URL}/api/v3/audiobooks/search`,
+    API_AUTHORS_DETAILS: (id) => `${API_BASE_URL}/api/v3/authors/${id}`,
+    API_AUTHORS_SEARCH: `${API_BASE_URL}/api/v3/authors/search`,
+    API_AUTHORS_AUDIOBOOKS: (id) => `${API_BASE_URL}/api/v3/authors/${id}/audiobooks`,
+    API_READERS_DETAILS: (id) => `${API_BASE_URL}/api/v3/readers/${id}`,
+    API_READERS_SECTIONS: (id) => `${API_BASE_URL}/api/v3/readers/${id}/sections`,
+    API_READERS_AUDIOBOOKS: (id) => `${API_BASE_URL}/api/v3/readers/${id}/audiobooks`,
+    API_AUTOCOMPLETE: `${API_BASE_URL}/api/v3/search/autocomplete`,
 
     ARCHIVE_VIEWS: 'https://be-api.us.archive.org/views/v1/short',
-    READER_SEARCH: 'https://librivox.org/reader/get_results'
 };
 
 // Default images
@@ -512,12 +514,12 @@ class ReaderAudiobooksPager extends VideoPager {
         }
 
         try {
-            // Get sections narrated by this reader using the API
-            const sectionsUrl = `${URLS.API_READERS_SECTIONS(readerId)}&limit=${limit}&offset=${offset}`;
-            const resp = http.GET(sectionsUrl, REQUEST_HEADERS_API);
+            // Get audiobooks narrated by this reader using the /api/v3/readers/{id}/audiobooks endpoint
+            const audiobooksUrl = `${URLS.API_READERS_AUDIOBOOKS(readerId)}?limit=${limit}&offset=${offset}`;
+            const resp = http.GET(audiobooksUrl, REQUEST_HEADERS_API);
 
             if (!resp.isOk) {
-                logError(`Failed to fetch reader sections: ${resp.code}`);
+                logError(`Failed to fetch reader audiobooks: ${resp.code}`);
                 return new ReaderAudiobooksPager({
                     videos: [],
                     hasMore: false,
@@ -525,13 +527,13 @@ class ReaderAudiobooksPager extends VideoPager {
                 });
             }
 
-            const sectionsResponse = JSON.parse(resp.body);
+            const audiobooksResponse = JSON.parse(resp.body);
 
-            const sectionsData = sectionsResponse.data || sectionsResponse;
+            // The /api/v3/readers/{id}/audiobooks endpoint returns audiobooks directly in the 'data' array
+            const audiobooks = audiobooksResponse.data;
 
-            // Check the nested structure: V3 returns sections directly in data array
-            const sections = Array.isArray(sectionsData) ? sectionsData : (sectionsData.sections?.sections || sectionsData.sections);
-            if (!sections || !Array.isArray(sections)) {
+            if (!audiobooks || !Array.isArray(audiobooks)) {
+                logError(`Invalid audiobooks response format for reader ${readerId}`);
                 return new ReaderAudiobooksPager({
                     videos: [],
                     hasMore: false,
@@ -539,37 +541,15 @@ class ReaderAudiobooksPager extends VideoPager {
                 });
             }
 
-            // Group sections by audiobook to create unique audiobook entries
-            const audiobookMap = new Map();
-
-            sections.forEach(section => {
-                if (section.audiobook_id && section.audiobook_title) {
-                    const audiobookId = section.audiobook_id;
-
-                    if (!audiobookMap.has(audiobookId)) {
-                        // Create audiobook entry from section data (now includes author info from API)
-                        const audiobook = {
-                            id: audiobookId,
-                            title: section.audiobook_title,
-                            description: section.audiobook_description || `Audiobook narrated in part by this reader`,
-                            url_librivox: section.audiobook_url || `https://librivox.org/audiobook-${audiobookId}`,
-                            language: section.language || 'English',
-                            coverart_jpg: DEFAULT_IMAGES.BOOK_COVER,
-                            authors: section.audiobook_authors || []
-                        };
-
-                        audiobookMap.set(audiobookId, audiobook);
-                    }
-                }
-            });
-
-            // Convert audiobook map to playlist array
-            const results = Array.from(audiobookMap.values())
-                .filter(x => !REGEX.COLLECTION.test(x.url_librivox))
-                .map(audiobookToPlaylist);
+            // Process audiobooks directly from the /api/v3/readers/{id}/audiobooks endpoint
+            const results = audiobooks
+                .filter(audiobook => audiobook && audiobook.id)
+                .filter(audiobook => !REGEX.COLLECTION.test(audiobook.url_librivox || ''))
+                .map(audiobookToPlaylist)
+                .filter(playlist => playlist !== null);
 
             // Determine if there are more pages
-            const hasMorePages = sections.length === limit;
+            const hasMorePages = audiobooks.length === limit;
 
             return new ReaderAudiobooksPager({
                 videos: results,
@@ -581,7 +561,7 @@ class ReaderAudiobooksPager extends VideoPager {
             });
 
         } catch (error) {
-            logError(`Error fetching reader audiobooks from API: ${error.message}`);
+            logError(`Error fetching reader audiobooks from /api/v3/readers/${readerId}/audiobooks: ${error.message}`);
             return new ReaderAudiobooksPager({
                 videos: [],
                 hasMore: false,
@@ -829,19 +809,17 @@ function getReaderChannel(url) {
  */
 function fetchReaderInfo(readerId) {
     try {
-        // Get reader details with statistics (V3 API includes stats by default)
-        const statsUrl = URLS.API_READERS_DETAILS(readerId);
-        const statsResp = http.GET(statsUrl, REQUEST_HEADERS_API);
+        // Get reader details from /api/v3/readers/{reader id} endpoint
+        const readerUrl = URLS.API_READERS_DETAILS(readerId);
+        const readerResp = http.GET(readerUrl, REQUEST_HEADERS_API);
 
-        if (statsResp.isOk) {
-            const statsResponse = JSON.parse(statsResp.body);
+        if (readerResp.isOk) {
+            const readerResponse = JSON.parse(readerResp.body);
 
-            const statsData = statsResponse.data || statsResponse;
-            const readers = Array.isArray(statsData) ? [statsData] : (statsData.readers || []);
+            // The /api/v3/readers/{id} endpoint returns the reader data directly in the 'data' field
+            const reader = readerResponse.data;
 
-            if (readers && readers.length > 0) {
-                const reader = readers[0];
-
+            if (reader) {
                 // Create a description using the available information
                 let description = `LibriVox volunteer reader`;
                 if (reader.display_name) {
@@ -868,6 +846,8 @@ function fetchReaderInfo(readerId) {
                     bookCount: reader.audiobook_count || 0
                 };
             }
+        } else {
+            logError(`Failed to fetch reader info: HTTP ${readerResp.code} for reader ${readerId}`);
         }
 
         // Ultimate fallback
@@ -1016,37 +996,6 @@ function getAudiobookDetails(url) {
         contents: new VideoPager(contents),
         url: internalUrl,
     });
-}
-
-/**
- * Extract page numbers from pagination HTML
- * @param {string} paginationHtml Pagination HTML string
- * @returns {Array<number>} Array of page numbers
- */
-function extractPageNumbers(paginationHtml) {
-    if (!paginationHtml) {
-        return [];
-    }
-
-    try {
-        const pageNumberRegex = />(\d+)</g;
-        const pageNumbers = [];
-        let match;
-
-        while ((match = pageNumberRegex.exec(paginationHtml)) !== null) {
-            if (match[1]) {
-                const pageNum = parseInt(match[1], 10);
-                if (!isNaN(pageNum) && !pageNumbers.includes(pageNum)) {
-                    pageNumbers.push(pageNum);
-                }
-            }
-        }
-
-        return pageNumbers.sort((a, b) => a - b);
-    } catch (error) {
-        logError(`Error extracting page numbers: ${error.message}`);
-        return [];
-    }
 }
 
 // ====================== DATA FETCHING ======================
@@ -1243,31 +1192,6 @@ function extractReaderIdFromUrl(url) {
 
     const match = url.match(REGEX.READER_CHANNEL);
     return match ? match[1] : null;
-}
-
-/**
- * Convert time string (hh:mm:ss) to seconds
- * @param {string} timeString Time string in hh:mm:ss format
- * @returns {number} Time in seconds
- */
-function timeToSeconds(timeString) {
-    if (!timeString || typeof timeString !== 'string') {
-        return 0;
-    }
-
-    // Split the input string into hours, minutes, and seconds
-    const parts = timeString.split(':').map(part => parseInt(part, 10) || 0);
-
-    if (parts.length === 3) {
-        // Format is hh:mm:ss
-        return parts[0] * 3600 + parts[1] * 60 + parts[2];
-    } else if (parts.length === 2) {
-        // Format is mm:ss
-        return parts[0] * 60 + parts[1];
-    } else {
-        // Invalid format
-        return 0;
-    }
 }
 
 /**
