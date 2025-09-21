@@ -12,7 +12,7 @@ const API_BASE_URL = 'https://librivox-api.openaudiobooks.org';
 
 // API and URL Constants
 const URLS = {
-   BASE: 'https://librivox.org',
+    BASE: 'https://librivox.org',
     AUTHOR_BASE: 'https://librivox.org/author',
     READER_BASE: 'https://librivox.org/reader',
     API_AUDIOBOOKS_FEED: `${API_BASE_URL}/api/v3/audiobooks/feed?sort_field=id&sort_order=desc`,
@@ -42,7 +42,6 @@ const REGEX = {
     AUTHOR_CHANNEL: /^https?:\/\/(?:www\.)?librivox\.org\/author\/(\d+)(?:\?[^#\s]*)?$/,
     READER_CHANNEL: /^https?:\/\/(?:www\.)?librivox\.org\/reader\/(\d+)(?:\?[^#\s]*)?$/,
     PLAYLIST: /^https?:\/\/(?:www\.)?librivox\.org\/(?!(?:search|pages|category|reader|author|group|collections|\d{4}\/\d{2}\/\d{2})\/?)(?:[a-zA-Z0-9-]+)(?:-by-[a-zA-Z0-9-]+)?\/?(?:\?[^#\s]*)?$/,
-    GROUP: /^https:\/\/librivox\.org\/group\/\d+\/?$/,
     COLLECTION: /^https:\/\/librivox\.org\/.*collection.*\/$/,
     ARCHIVE_ORG_DETAILS: /https:\/\/(?:www\.)?archive\.org\/details\/([^\/]+)/
 };
@@ -128,7 +127,7 @@ source.isPlaylistUrl = (url) => {
     if (url.startsWith('https://grayjay.internal/librivox/book')) {
         return true;
     }
-    return REGEX.PLAYLIST.test(url) || REGEX.GROUP.test(url);
+    return REGEX.PLAYLIST.test(url);
 };
 
 /**
@@ -258,7 +257,6 @@ source.isContentDetailsUrl = function (url) {
  */
 source.getContentDetails = function (url) {
     let bookId, chapterId;
-    let originalUrl = url;
 
     // Handle internal URL format
     if (url.startsWith('https://grayjay.internal/librivox/book/')) {
@@ -358,7 +356,7 @@ source.getContentDetails = function (url) {
             playlistInfo.authorUrl,
             playlistInfo?.authorThumbnailUrl ?? ''
         ),
-        url: originalUrl, // Preserve the original URL that was passed to the function
+        url: url,
         duration: chapter.duration,
         thumbnails: new Thumbnails([new Thumbnail(playlistInfo.bookCoverUrl)]),
         video: new UnMuxVideoSourceDescriptor([], sources),
@@ -1016,8 +1014,6 @@ function getAudiobookCachedDetails(url) {
     } else {
         id = extractSlug(url);
     }
-
-
 
     let apiUrl = URLS.API_AUDIOBOOKS_DETAILS.replace('{audioBookId}', id);
 
