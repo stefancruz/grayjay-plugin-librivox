@@ -5,7 +5,7 @@
   "authorUrl": "",
   "platformUrl": "https://librivox.org/",
   "sourceUrl": "https://grayjay-plugin-librivox.craftwithstefan.com/LibriVoxConfig.json",
-  "repositoryUrl": "",
+  "repositoryUrl": "https://github.com/stefancruz/grayjay-plugin-librivox",
   "scriptUrl": "./LibriVoxScript.js",
   "version": 24,
   "iconUrl": "./LibriVoxIcon.png",
