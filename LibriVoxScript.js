@@ -49,9 +49,8 @@ const REGEX = {
 // Request Headers
 const REQUEST_HEADERS = { 'X-Requested-With': 'XMLHttpRequest' };
 
-const REQUEST_HEADERS_API = {
-    'x-api-key': 'your_secret_key_1_@7yqpRcDrDw2HRcdXJZp@MnPVaQy&QmptA~Rw4Kvp4YX%AXQYVryJKhCuP2rYRY'
-};
+// Default request headers
+const REQUEST_HEADERS_API = {};
 
 // Plugin State
 let config = {};
