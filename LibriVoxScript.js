@@ -8,7 +8,7 @@
 // ---------------------- Constants ----------------------
 const PLATFORM = 'librivox';
 
-const API_BASE_URL = 'https://librivox-api.openaudiobooks.org';
+const API_BASE_URL = 'https://librivox-api.craftwithstefan.com';
 
 // API and URL Constants
 const URLS = {
