@@ -31,9 +31,9 @@ const URLS = {
 
 // Default images
 const DEFAULT_IMAGES = {
-    BOOK_COVER: 'https://grayjay-plugin-librivox.pages.dev/assets/default-book-cover.png',
-    AUTHOR_AVATAR: 'https://grayjay-plugin-librivox.pages.dev/LibriVoxIcon.png',
-    READER_AVATAR: 'https://grayjay-plugin-librivox.pages.dev/LibriVoxIcon.png'
+    BOOK_COVER: 'https://grayjay-plugin-librivox.craftwithstefan.com/assets/default-book-cover.png',
+    AUTHOR_AVATAR: 'https://grayjay-plugin-librivox.craftwithstefan.com/LibriVoxIcon.png',
+    READER_AVATAR: 'https://grayjay-plugin-librivox.craftwithstefan.com/LibriVoxIcon.png'
 };
 
 // Regular Expressions

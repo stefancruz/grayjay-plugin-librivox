@@ -7,10 +7,10 @@
   "sourceUrl": "https://grayjay-plugin-librivox.craftwithstefan.com/LibriVoxConfig.json",
   "repositoryUrl": "https://github.com/stefancruz/grayjay-plugin-librivox",
   "scriptUrl": "./LibriVoxScript.js",
-  "version": 24,
+  "version": 25,
   "iconUrl": "./LibriVoxIcon.png",
   "id": "5c2f78d4-6eec-4f3f-b25b-28d885aeb147",
-  "scriptSignature": "g1RcqwbCDE2vyubqdHAyf6TUVkoKWgz5j9VIIKnQJUMmn+RnkmVVYWfZhgZtkUTKe2+B0W8wMyr5XaC9Ovb319U9HmcR2BjmRNDY7lLREBobq1nzGLk9ItWZN1djTQ9arCQMMoikdNi1Hxv9/D6bookh4XQ3HRRRvpMWoqrQHkMNklBaQGvuBNnx4X2WKn5PiKLDiwudbskolyYpzVcBLtY3X6Vvc3qnow/MPDhk+AnHY47iXTliBEIvkyBEmj5vH//Pre5eX8UwzkVCHwbLEYucJtN5NIk7XB0xmUbEJo0MYwbtud7tXvfz1DSXMX74vAPI36jjE5cyIND5/wspNA==",
+  "scriptSignature": "FneG7eDbhYMUsgBmWygA2Ibdi4r2uk5C47GYHLRDEhkx9wemXZaKIpsrQBlNuFZiGhf8G3PfQuQibG2gtOYya+aXUdkuSuMZl5uixTFJ/bk4XWWp3QlluSmp7l/NT52DUqlU4/ncfYNN3VYqG0TO/eWrT/RvcoSVb2GgDG85Z7D4qrTRlxqvcAOOlEtzkPaHX05CTNEu0TWCdM22niGeztSYs/ZurbBnhi2QBA7L+2tr0kASLbEauk9XlX7V5hE2fsMvZV/ZR3SmStbhIxFRPtmAAM3MumaslXeVKjublCxgiMIWod8IJxHxArg/N/PvwE8C/h3UT/mjoCgD3Ahm/w==",
   "scriptPublicKey": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAs5shGUhmdmWJtDag0oDSV8KiCvAOmXBOxAVzWQs4uxLJ7IG6p99YlyTHnEi3B1VuIhUz/FcSkL7g/f20JQweNLTCOGlUR44+5dbaP8ZlfdbAmXYwie7nNKJX6rnXw+G9u9QQ1DBQZttIlX+d6acwldAqftVA+GUiN5uHWgtAHnFkTNZMSF3h4vq1ucJdF1CpWcPRW74/S4r841Afs29CAICtcduDoTaX4v4b/wrzDw0coYaEwlk2Gb8rRuD7ZV7G+Df1yZtFWhnMB7VhiHGxxIqoVEFoTZ5/FNhw0HAiMlWPowxInm/zwyI0HunDFB3gwilsPBtnA1WvOvbChVh5fQIDAQAB",
   "packages": [
     "Http"
