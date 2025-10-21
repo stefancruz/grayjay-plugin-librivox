@@ -653,7 +653,7 @@ function searchAuthors(query) {
             return new PlatformChannel({
                 id: new PlatformID(PLATFORM, authorUrl, config.id),
                 name: authorName,
-                thumbnail: author.imageurl || DEFAULT_IMAGES.AUTHOR_AVATAR,
+                thumbnail: author.image_url || DEFAULT_IMAGES.AUTHOR_AVATAR,
                 subscribers: -1,
                 description: author.description || '',
                 url: authorUrl,
@@ -749,7 +749,7 @@ function getAuthorChannel(url) {
     return new PlatformChannel({
         id: new PlatformID(PLATFORM, author.url, config.id),
         name: authorName,
-        thumbnail: author?.imageurl || DEFAULT_IMAGES.AUTHOR_AVATAR || '',
+        thumbnail: author?.image_url || DEFAULT_IMAGES.AUTHOR_AVATAR || '',
         subscribers: 0,
         description: author?.description || '',
         url,
@@ -1153,7 +1153,7 @@ function audiobookToPlaylist(book) {
     const author = book?.authors?.[0] || { id: '', name: '' };
     const author_name = author.name || 'Unknown Author';
     const author_url = author.id ? `${URLS.AUTHOR_BASE}/${author.id}` : '';
-    const imageurl = author.image_url || DEFAULT_IMAGES.AUTHOR_AVATAR;
+    const image_url = author.image_url || DEFAULT_IMAGES.AUTHOR_AVATAR;
     const bookId = book.id || extractId(book?.url_librivox) || '';
 
     return new PlatformPlaylist({
@@ -1166,7 +1166,7 @@ function audiobookToPlaylist(book) {
             new PlatformID(PLATFORM, author_url, config.id),
             author_name,
             author_url,
-            imageurl
+            image_url
         ),
         name: book?.title || 'Unknown Title',
         thumbnail: book.coverart_thumbnail || book?.coverart_jpg || DEFAULT_IMAGES.BOOK_COVER,
