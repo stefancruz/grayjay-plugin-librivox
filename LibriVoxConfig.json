@@ -10,7 +10,7 @@
   "version": 27,
   "iconUrl": "./LibriVoxIcon.png",
   "id": "5c2f78d4-6eec-4f3f-b25b-28d885aeb147",
-  "scriptSignature": "FiQgnS/t7zfc+MlRJ/RIyNWx3k8p0Xhmg2qULNfNRtn5qXygISlVH3DnazijQEJUu3rlmafEUS2JUGSvWpCMKKXRog41MLKakH5ovDCfVx0PU/9FL+K1ZQWNtYvUyMkblydSo9sS8tmm4o/jbk3FFGFzIkxBxyv4Kd4xy6G4NwDrN44b8oPti4tPppLL9l32KtCjyKfTJYT7PwyvULHHbm+szkABnDooxI/fnSNtuv3FIHOn/91bKtxXzxHMI6ahaCN0or8paJaz5QBIRtqwlMbOS2QWbEZ7cLlS4+BfU5Bqsr2Faor8QRoHovrcoMpd4y69nbV4KnhPjqQ6FQ/3Jw==",
+  "scriptSignature": "O+Xy6q8dUuPMio7W+JsSp13G++o3803HfI5qp9OAKe1XcdlJwvDfusaXFUAbroKNF5QscbBoWlyyq9rXIfStc50EU8kThaXzFa+5kXVnx2HyoYSxtBWGH7zhLlfe6qDNNMlaSRLHkzk2F7IgERMUjgWJVvihvTymIxM0XL2UexqekbJZOHIDhxuwweCgXVIRnPFI8pmW8PMoRKYxmSonu3BYpFxLujSZaVUsEU7b2XxehR1yN9swszlhYIy15caxoVLMkBKEaZGzqqCLl8p2yjWDyLQ0rErxcFlJhxKZ4He1PTNk46LvhpkJO2qx2FgGEovHdYitxwd65m8W30Fqmw==",
   "scriptPublicKey": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAs5shGUhmdmWJtDag0oDSV8KiCvAOmXBOxAVzWQs4uxLJ7IG6p99YlyTHnEi3B1VuIhUz/FcSkL7g/f20JQweNLTCOGlUR44+5dbaP8ZlfdbAmXYwie7nNKJX6rnXw+G9u9QQ1DBQZttIlX+d6acwldAqftVA+GUiN5uHWgtAHnFkTNZMSF3h4vq1ucJdF1CpWcPRW74/S4r841Afs29CAICtcduDoTaX4v4b/wrzDw0coYaEwlk2Gb8rRuD7ZV7G+Df1yZtFWhnMB7VhiHGxxIqoVEFoTZ5/FNhw0HAiMlWPowxInm/zwyI0HunDFB3gwilsPBtnA1WvOvbChVh5fQIDAQAB",
   "packages": [
     "Http"
@@ -145,7 +145,8 @@
       "Add: Genre setting for filtering home feed;",
       "Add: Genre and Language search filters (can override default settings);",
       "Add: Search within author/reader channels with language and genre filters;",
-      "Add: Support more platforms (IMDB, Library of Congress, BookBrainz, StoryGraph, Italian National Library, and German National Library) in author links when available;"
+      "Add: Support more platforms (IMDB, Library of Congress, BookBrainz, StoryGraph, Italian National Library, and German National Library) in author links when available;",
+      "Fix: Show track count in author channel playlists;"
     ]
   }
 }

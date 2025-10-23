@@ -920,6 +920,7 @@ function getAuthorAudiobooks(url) {
                     author.image_url || DEFAULT_IMAGES.AUTHOR_AVATAR
                 ),
                 url: internalUrl,
+                videoCount: book.num_sections || -1,
                 duration: book.totaltimesecs,
                 description: book.description || ''
             });
