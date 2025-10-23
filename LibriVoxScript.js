@@ -610,46 +610,6 @@ function searchAuthors(query) {
             const authorName = author.name || 'Unknown Author';
             const authorUrl = `${URLS.AUTHOR_BASE}/${author.id}`;
 
-            let links = {
-                "LibriVox": authorUrl
-            };
-
-            if (author.wikipedia_url) {
-                links['Wikipedia'] = author.wikipedia_url;
-            }
-
-            if (author.wikidata_id) {
-                links['Wikidata'] = `https://www.wikidata.org/wiki/${author.wikidata_id}`;
-            }
-
-            if (author.isni_id) {
-                links['ISNI'] = `https://isni.org/isni/${author.isni_id}`;
-            }
-
-            if (author.viaf_id) {
-                links['Viaf'] = `https://viaf.org/en/viaf/${author.viaf_id}/`;
-            }
-
-            if (author?.openlibrary_id) {
-                links['Open Library'] = `https://openlibrary.org/authors/${author.openlibrary_id}/`
-            }
-
-            if (author?.project_gutenberg_id) {
-                links['Project Gutenberg'] = `https://www.gutenberg.org/ebooks/author/${author.project_gutenberg_id}/`
-            }
-
-            if (author?.goodreads_id) {
-                links['Goodreads'] = `https://www.goodreads.com/author/show/${author.goodreads_id}/`
-            }
-
-            if (author?.amazon_id) {
-                links['Amazon'] = `https://www.amazon.com/stores/author/${author.amazon_id}/`
-            }
-
-            if (author?.librarything_id) {
-                links['Librarything'] = `https://www.librarything.com/author/${author.librarything_id}/`
-            }
-
             return new PlatformChannel({
                 id: new PlatformID(PLATFORM, authorUrl, config.id),
                 name: authorName,
@@ -657,7 +617,7 @@ function searchAuthors(query) {
                 subscribers: -1,
                 description: author.description || '',
                 url: authorUrl,
-                links: links
+                links: buildAuthorLinks(author)
             });
         });
 
@@ -706,46 +666,6 @@ function getAuthorChannel(url) {
 
     const authorName = author.name || 'Unknown Author';
 
-    let links = {
-        "LibriVox": `${URLS.AUTHOR_BASE}/${author.id}`
-    };
-
-    if (author.wikipedia_url) {
-        links['Wikipedia'] = author.wikipedia_url;
-    }
-
-    if (author.wikidata_id) {
-        links['Wikidata'] = `https://www.wikidata.org/wiki/${author.wikidata_id}`;
-    }
-
-    if (author.isni_id) {
-        links['ISNI'] = `https://isni.org/isni/${author.isni_id}`;
-    }
-
-    if (author.viaf_id) {
-        links['Viaf'] = `https://viaf.org/en/viaf/${author.viaf_id}/`;
-    }
-
-    if (author?.openlibrary_id) {
-        links['Open Library'] = `https://openlibrary.org/authors/${author.openlibrary_id}/`
-    }
-
-    if (author?.project_gutenberg_id) {
-        links['Project Gutenberg'] = `https://www.gutenberg.org/ebooks/author/${author.project_gutenberg_id}/`
-    }
-
-    if (author?.goodreads_id) {
-        links['Goodreads'] = `https://www.goodreads.com/author/show/${author.goodreads_id}/`
-    }
-
-    if (author?.amazon_id) {
-        links['Amazon'] = `https://www.amazon.com/stores/author/${author.amazon_id}/`
-    }
-
-    if (author?.librarything_id) {
-        links['Librarything'] = `https://www.librarything.com/author/${author.librarything_id}/`
-    }
-
     return new PlatformChannel({
         id: new PlatformID(PLATFORM, author.url, config.id),
         name: authorName,
@@ -753,7 +673,7 @@ function getAuthorChannel(url) {
         subscribers: 0,
         description: author?.description || '',
         url,
-        links: links
+        links: buildAuthorLinks(author)
     });
 }
 /**
@@ -1176,6 +1096,93 @@ function audiobookToPlaylist(book) {
 }
 
 // ====================== UTILITY FUNCTIONS ======================
+
+/**
+ * Build external links object for an author
+ * @param {Object} author Author object from API
+ * @returns {Object} Links object with platform URLs
+ */
+function buildAuthorLinks(author) {
+    const links = {
+        "LibriVox": `${URLS.AUTHOR_BASE}/${author.id}`
+    };
+
+    // Popular platforms (high priority)
+    if (author.wikipedia_url) {
+        links['Wikipedia'] = author.wikipedia_url;
+    }
+
+    if (author?.goodreads_id) {
+        links['Goodreads'] = `https://www.goodreads.com/author/show/${author.goodreads_id}/`;
+    }
+
+    if (author?.imdb_id) {
+        links['IMDB'] = `https://www.imdb.com/name/${author.imdb_id}/`;
+    }
+
+    if (author?.amazon_id) {
+        links['Amazon'] = `https://www.amazon.com/stores/author/${author.amazon_id}/`;
+    }
+
+    // Authority files and libraries
+    if (author?.lc_naf_id) {
+        links['Library of Congress'] = `https://id.loc.gov/authorities/names/${author.lc_naf_id}`;
+    }
+
+    if (author.wikidata_id) {
+        links['Wikidata'] = `https://www.wikidata.org/wiki/${author.wikidata_id}`;
+    }
+
+    if (author.viaf_id) {
+        links['VIAF'] = `https://viaf.org/viaf/${author.viaf_id}/`;
+    }
+
+    if (author.isni_id) {
+        links['ISNI'] = `https://isni.org/isni/${author.isni_id}`;
+    }
+
+    // Book platforms
+    if (author?.openlibrary_id) {
+        links['Open Library'] = `https://openlibrary.org/authors/${author.openlibrary_id}/`;
+    }
+
+    if (author?.project_gutenberg_id) {
+        links['Project Gutenberg'] = `https://www.gutenberg.org/ebooks/author/${author.project_gutenberg_id}/`;
+    }
+
+    if (author?.bookbrainz_id) {
+        links['BookBrainz'] = `https://bookbrainz.org/author/${author.bookbrainz_id}`;
+    }
+
+    if (author?.librarything_id) {
+        links['LibraryThing'] = `https://www.librarything.com/author/${author.librarything_id}/`;
+    }
+
+    if (author?.storygraph_id) {
+        links['StoryGraph'] = `https://app.thestorygraph.com/authors/${author.storygraph_id}`;
+    }
+
+    // Specialized platforms
+    if (author?.musicbrainz_id) {
+        links['MusicBrainz'] = `https://musicbrainz.org/artist/${author.musicbrainz_id}`;
+    }
+
+    // Regional libraries
+    if (author?.opac_sbn_id) {
+        links['Italian National Library'] = `https://opac.sbn.it/nome/${author.opac_sbn_id}`;
+    }
+
+    if (author?.gnd_id) {
+        links['German National Library'] = `https://d-nb.info/gnd/${author.gnd_id}`;
+    }
+
+    // Other platforms
+    if (author?.youtube_id) {
+        links['YouTube'] = author.youtube_id;
+    }
+
+    return links;
+}
 
 /**
  * Extract reader ID from reader URL
