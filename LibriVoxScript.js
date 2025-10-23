@@ -21,9 +21,11 @@ const URLS = {
     API_AUTHORS_DETAILS: (id) => `${API_BASE_URL}/api/v3/authors/${id}`,
     API_AUTHORS_SEARCH: `${API_BASE_URL}/api/v3/authors/search`,
     API_AUTHORS_AUDIOBOOKS: (id) => `${API_BASE_URL}/api/v3/authors/${id}/audiobooks`,
+    API_AUTHORS_AUDIOBOOKS_SEARCH: (id) => `${API_BASE_URL}/api/v3/authors/${id}/audiobooks/search`,
     API_READERS_DETAILS: (id) => `${API_BASE_URL}/api/v3/readers/${id}`,
     API_READERS_SECTIONS: (id) => `${API_BASE_URL}/api/v3/readers/${id}/sections`,
     API_READERS_AUDIOBOOKS: (id) => `${API_BASE_URL}/api/v3/readers/${id}/audiobooks`,
+    API_READERS_AUDIOBOOKS_SEARCH: (id) => `${API_BASE_URL}/api/v3/readers/${id}/audiobooks/search`,
     API_AUTOCOMPLETE: `${API_BASE_URL}/api/v3/search/autocomplete`,
 
     ARCHIVE_VIEWS: 'https://be-api.us.archive.org/views/v1/short',
@@ -189,6 +191,34 @@ source.searchChannels = function (query) {
     return searchAuthors(query);
 };
 
+/**
+ * Search within a specific channel (author or reader)
+ * @param {string} channelUrl Channel URL
+ * @param {string} query Search query
+ * @param {string} type Content type
+ * @param {string} order Sort order
+ * @param {Object} filters Search filters
+ * @returns {ContentPager} Paged search results
+ */
+source.searchChannelContents = function (channelUrl, query, type, order, filters) {
+    let searchUrl = null;
+
+    if (REGEX.AUTHOR_CHANNEL.test(channelUrl)) {
+        const match = channelUrl.match(REGEX.AUTHOR_CHANNEL);
+        const id = match ? match[1] : null;
+        searchUrl = id ? URLS.API_AUTHORS_AUDIOBOOKS_SEARCH(id) : null;
+    } else if (REGEX.READER_CHANNEL.test(channelUrl)) {
+        const match = channelUrl.match(REGEX.READER_CHANNEL);
+        const id = match ? match[1] : null;
+        searchUrl = id ? URLS.API_READERS_AUDIOBOOKS_SEARCH(id) : null;
+    }
+
+    if (!searchUrl || !query) {
+        return new ContentPager([], false);
+    }
+
+    return createAudiobookSearchPager(searchUrl, query, null, filters);
+};
 
 /**
  * Get search suggestions for autocomplete

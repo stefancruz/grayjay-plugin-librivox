@@ -7,10 +7,10 @@
   "sourceUrl": "https://grayjay-plugin-librivox.craftwithstefan.com/LibriVoxConfig.json",
   "repositoryUrl": "https://github.com/stefancruz/grayjay-plugin-librivox",
   "scriptUrl": "./LibriVoxScript.js",
-  "version": 26,
+  "version": 27,
   "iconUrl": "./LibriVoxIcon.png",
   "id": "5c2f78d4-6eec-4f3f-b25b-28d885aeb147",
-  "scriptSignature": "HlegQOA0DuBdnTDuQ2m8P8i+4YtyUfUYCAAsq8ZNXB8xONjsdmoAtdhf80Qv78xqp7JsUSXkDkyOtX62YZvtF/bO6QP7QawEN7Re2MLBNf2/KRiuIkfs7TJtQORIV+HpCr/eU+gjgU1QNk59RlrHNKbaKX7tOsq/gwm5B2pCc1vX6F2UN+CYa9wgGLmmo7GlfrjWA+bZ/bPkxeUTJreAPSO7T6khaxIkr+IvPNdOJunUdFuDOgLYPb9mfo3nurdgVle/Xbs53uQ+8j7ol/XnmCiLSLVbec/5i3TxEKENqY6kqx/JLRVaZ/sdspdf/fFU65hZ+hRkNoC2+ATJi6dzww==",
+  "scriptSignature": "FiQgnS/t7zfc+MlRJ/RIyNWx3k8p0Xhmg2qULNfNRtn5qXygISlVH3DnazijQEJUu3rlmafEUS2JUGSvWpCMKKXRog41MLKakH5ovDCfVx0PU/9FL+K1ZQWNtYvUyMkblydSo9sS8tmm4o/jbk3FFGFzIkxBxyv4Kd4xy6G4NwDrN44b8oPti4tPppLL9l32KtCjyKfTJYT7PwyvULHHbm+szkABnDooxI/fnSNtuv3FIHOn/91bKtxXzxHMI6ahaCN0or8paJaz5QBIRtqwlMbOS2QWbEZ7cLlS4+BfU5Bqsr2Faor8QRoHovrcoMpd4y69nbV4KnhPjqQ6FQ/3Jw==",
   "scriptPublicKey": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAs5shGUhmdmWJtDag0oDSV8KiCvAOmXBOxAVzWQs4uxLJ7IG6p99YlyTHnEi3B1VuIhUz/FcSkL7g/f20JQweNLTCOGlUR44+5dbaP8ZlfdbAmXYwie7nNKJX6rnXw+G9u9QQ1DBQZttIlX+d6acwldAqftVA+GUiN5uHWgtAHnFkTNZMSF3h4vq1ucJdF1CpWcPRW74/S4r841Afs29CAICtcduDoTaX4v4b/wrzDw0coYaEwlk2Gb8rRuD7ZV7G+Df1yZtFWhnMB7VhiHGxxIqoVEFoTZ5/FNhw0HAiMlWPowxInm/zwyI0HunDFB3gwilsPBtnA1WvOvbChVh5fQIDAQAB",
   "packages": [
     "Http"
@@ -138,12 +138,14 @@
     }
   ],
   "changelog": {
-    "27": [
-      "Add: Genre setting for filtering home feed;",
-      "Add: Genre and Language search filters (can override default settings);"
-    ],
     "26": [
       "Fix: Authors thumbnails when available;"
+    ],
+    "27": [
+      "Add: Genre setting for filtering home feed;",
+      "Add: Genre and Language search filters (can override default settings);",
+      "Add: Search within author/reader channels with language and genre filters;",
+      "Add: Support more platforms (IMDB, Library of Congress, BookBrainz, StoryGraph, Italian National Library, and German National Library) in author links when available;"
     ]
   }
 }
