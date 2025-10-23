@@ -61,6 +61,7 @@ let state = {
 let settings = {}
 
 let LANGUAGE_OPTIONS = [];
+let GENRE_OPTIONS = [];
 
 // ====================== PLUGIN ENTRY POINTS ======================
 
@@ -78,7 +79,12 @@ source.enable = function (conf, set, saveStateStr) {
         settings.languageOptionIndex = 0;
     }
 
+    if (IS_TESTING || settings.genreOptionIndex === undefined) {
+        settings.genreOptionIndex = 0;
+    }
+
     LANGUAGE_OPTIONS = loadOptionsForSetting('languageOptionIndex');
+    GENRE_OPTIONS = loadOptionsForSetting('genreOptionIndex');
 
     if (saveStateStr) {
         try {
@@ -130,14 +136,47 @@ source.isPlaylistUrl = (url) => {
 };
 
 /**
- * Search for audiobooks
+ * Get search capabilities with language and genre filters
+ * @returns {ResultCapabilities} Search capabilities
+ */
+source.getSearchCapabilities = function() {
+    const languages = LANGUAGE_OPTIONS.filter(lang => lang !== 'All');
+    const genres = GENRE_OPTIONS.filter(genre => genre !== 'All');
+
+    return new ResultCapabilities(
+        [Type.Feed.Mixed],
+        [Type.Order.Chronological],
+        [
+            new FilterGroup(
+                "Language",
+                languages.map(lang => new FilterCapability(lang, lang)),
+                false,
+                "language"
+            ),
+            new FilterGroup(
+                "Genre",
+                genres.map(genre => new FilterCapability(genre, genre)),
+                false,
+                "genre"
+            )
+        ]
+    );
+};
+
+/**
+ * Search for audiobooks with optional filters
  * @param {string} query Search query
+ * @param {string} type Content type (unused)
+ * @param {string} order Sort order (unused)
+ * @param {Object} filters Filter object with language and/or genre
  * @returns {ContentPager} Paged results for search
  */
-source.search = function (query) {
+source.search = function (query, type, order, filters) {
     return createAudiobookSearchPager(
         URLS.API_AUDIOBOOKS_SEARCH,
-        query
+        query,
+        null,
+        filters
     );
 };
 
@@ -391,11 +430,16 @@ class HomeContentPager extends ContentPager {
         this.results = [];
         // Only load more regular books on subsequent pages
         let languageOption = LANGUAGE_OPTIONS[settings.languageOptionIndex];
+        let genreOption = GENRE_OPTIONS[settings.genreOptionIndex];
 
         let nextPageUrl = `${URLS.API_AUDIOBOOKS_FEED}&limit=${this.pageSize}&offset=${this.offset}`;
 
         if (languageOption && languageOption !== 'All') {
-            nextPageUrl += `&language=${languageOption}`;
+            nextPageUrl += `&language=${encodeURIComponent(languageOption)}`;
+        }
+
+        if (genreOption && genreOption !== 'All') {
+            nextPageUrl += `&genre=${encodeURIComponent(genreOption)}`;
         }
 
         const resp = http.GET(nextPageUrl, REQUEST_HEADERS_API, false);
@@ -441,12 +485,23 @@ class SearchAudiobooksPager extends VideoPager {
     nextPage() {
         let offset = this.context.offset ?? 0;
         let searchResults = [];
-        const queryParams = objectToUrlEncodedString({
+        const params = {
             limit: this.context.limit || 50,
             offset,
             q: this.context.query?.toLowerCase()?.trim(),
-        });
+        };
 
+        // Add filters if present
+        if (this.context.filters) {
+            if (this.context.filters.language) {
+                params.language = this.context.filters.language;
+            }
+            if (this.context.filters.genre) {
+                params.genre = this.context.filters.genre;
+            }
+        }
+
+        const queryParams = objectToUrlEncodedString(params);
         const url = `${this.context.baseUrl}?${queryParams}`;
 
         const res = http.GET(url, REQUEST_HEADERS_API);
@@ -481,7 +536,8 @@ class SearchAudiobooksPager extends VideoPager {
             hasMore,
             context: {
                 ...this.context,
-                offset: offset
+                offset: offset,
+                filters: this.context.filters // Preserve filters for pagination
             },
         });
     }
@@ -575,14 +631,16 @@ class ReaderAudiobooksPager extends VideoPager {
  * @param {string} baseUrl API base URL
  * @param {string} query Search query
  * @param {Function} filterCb Optional filter callback
+ * @param {Object} filters Optional filters object (language, genre)
  * @returns {SearchAudiobooksPager} Search pager
  */
-function createAudiobookSearchPager(baseUrl, query, filterCb = () => true) {
+function createAudiobookSearchPager(baseUrl, query, filterCb = () => true, filters = null) {
     return new SearchAudiobooksPager({
         context: {
             baseUrl,
             query,
             filterCb,
+            filters,
             limit: 50,
             offset: 0
         }

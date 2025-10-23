@@ -87,9 +87,61 @@
         "Ukrainian",
         "Urdu"
       ]
+    },
+    {
+      "variable": "genreOptionIndex",
+      "name": "Genre",
+      "description": "",
+      "type": "Dropdown",
+      "default": "0",
+      "options": [
+        "All",
+        "Action & Adventure Fiction",
+        "Biography & Autobiography",
+        "Children's Fiction",
+        "Children's Non-fiction",
+        "Classics (Greek & Latin Antiquity)",
+        "Comedy",
+        "Crime & Mystery Fiction",
+        "Detective Fiction",
+        "Drama",
+        "Dramatic Readings",
+        "Essays & Short Works",
+        "Fantasy Fiction",
+        "Fiction",
+        "Gothic Fiction",
+        "Historical Fiction",
+        "Horror & Ghost Stories",
+        "Humor",
+        "Humorous Fiction",
+        "Literary Fiction",
+        "Memoirs",
+        "Multi-version",
+        "Music",
+        "Nature",
+        "Non-fiction",
+        "Philosophy",
+        "Poetry",
+        "Published 1800 -1900",
+        "Published 1900 -2000",
+        "Published before 1800",
+        "Romance",
+        "Satire",
+        "Science",
+        "Science Fiction",
+        "Short Stories",
+        "Short works",
+        "Suspense",
+        "Thriller",
+        "Travel & Geography"
+      ]
     }
   ],
   "changelog": {
+    "27": [
+      "Add: Genre setting for filtering home feed;",
+      "Add: Genre and Language search filters (can override default settings);"
+    ],
     "26": [
       "Fix: Authors thumbnails when available;"
     ]
