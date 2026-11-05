@@ -7,10 +7,10 @@
   "sourceUrl": "https://grayjay-plugin-librivox.craftwithstefan.com/LibriVoxConfig.json",
   "repositoryUrl": "https://github.com/stefancruz/grayjay-plugin-librivox",
   "scriptUrl": "./LibriVoxScript.js",
-  "version": 27,
+  "version": 28,
   "iconUrl": "https://grayjay-plugin-librivox.craftwithstefan.com/LibriVoxIcon.png",
   "id": "5c2f78d4-6eec-4f3f-b25b-28d885aeb147",
-  "scriptSignature": "EfmgQguYiroY4frnp9oW3MEx3haSbjQALa/kOKxgeOnvrzRCdKBne9DQJEhPruMvMZmbJnKCoOpIhHRSmFW4JBR5HtP0nn5Oa8+oK46iqbeA13t3qZ5rkzNyPB7/hsBZ7rjCs1ZNWsf5KOfdrabPEaDo1rqywtpGx+Wbr1FK0Rioz3OtXzKtX3ktrd3DvSZGjM+ZE7y7qsmnOWoWBCt1zdVioR6q3keV7HOMGcOYV0Jt1FaJM5I8dpGBPmRRL0dcuHiuaqCL9BDLOxf4fC0gdy1BjZuH0ImUQvAzFcI6SzqM75tS9NVv493O6Smn+foq8nplzgA/vPO/kURPG9nV0A==",
+  "scriptSignature": "l8jjdq4T8sDPMugIhyXj/jDOdJG3rqTm3AaMhtFrympJLTPRbAv76p/d7sYHtOEz6/+MuYLZrSRyV08AJu/wDY6zpoP0NP1YPRm0EzeUzL5bc+UYVRhENC/xb3w13H4cCrC3rGlc/zd0TflqGpoIAix7qU++NNXeIwcVh2FElIPZvHOSw8Lchp4/FmEs6Oet6vAuBD9werpWvCkMTMPpMs+mhKyhFavMuXLUOspo06IkDTqRuVKuSM64Jim+XmTEOHtBlVMB+zYH8nscBk8hTfaXYUSq9jFI1YaX1uxUytrcHA4ZWr2gkjWjDEndz5AD88FMFDo0UJZONiYT85nq4w==",
   "scriptPublicKey": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAs5shGUhmdmWJtDag0oDSV8KiCvAOmXBOxAVzWQs4uxLJ7IG6p99YlyTHnEi3B1VuIhUz/FcSkL7g/f20JQweNLTCOGlUR44+5dbaP8ZlfdbAmXYwie7nNKJX6rnXw+G9u9QQ1DBQZttIlX+d6acwldAqftVA+GUiN5uHWgtAHnFkTNZMSF3h4vq1ucJdF1CpWcPRW74/S4r841Afs29CAICtcduDoTaX4v4b/wrzDw0coYaEwlk2Gb8rRuD7ZV7G+Df1yZtFWhnMB7VhiHGxxIqoVEFoTZ5/FNhw0HAiMlWPowxInm/zwyI0HunDFB3gwilsPBtnA1WvOvbChVh5fQIDAQAB",
   "packages": [
     "Http"
@@ -150,6 +150,17 @@
       "Add: Search within author/reader channels with language and genre filters;",
       "Add: Support more platforms (IMDB, Library of Congress, BookBrainz, StoryGraph, Italian National Library, and German National Library) in author links when available;",
       "Fix: Show track count in author channel playlists;"
+    ],
+    "28": [
+      "Fix: Home, search, author search and channel pages show an error instead of an empty list when the LibriVox API request fails;",
+      "Fix: Author and reader channels show an error instead of \"Unknown Author\" or a \"Reader <id>\" placeholder when loading fails, and a placeholder saved by earlier versions is loaded again;",
+      "Fix: librivox.org book links ending in \"/\" open the book and its chapters;",
+      "Fix: Author and reader links ending in \"/\" open the channel;",
+      "Fix: Chapter links are no longer treated as book links;",
+      "Fix: A book has the same URL and id in the home feed, search, channels and the book page;",
+      "Fix: Audio tracks are labelled MP3 instead of AAC;",
+      "Improvement: Author search loads more results when scrolling;",
+      "Improvement: Requests are retried only after timeouts, rate limiting (with a pause) and server errors;"
     ]
   }
 }
