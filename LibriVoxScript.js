@@ -27,8 +27,12 @@ const DEFAULT_IMAGES = {
 // Regular Expressions
 const REGEX = {
     CONTENT_DETAILS: /https:\/\/librivox\.org\/[\w\-]+(?:\/[\w\-]+)*\/\?([^#&]*&)*chapter=(\d+)(?:&[^#]*)?$/,
-    AUTHOR_CHANNEL: /^https?:\/\/(?:www\.)?librivox\.org\/author\/(\d+)(?:\?[^#\s]*)?$/,
-    READER_CHANNEL: /^https?:\/\/(?:www\.)?librivox\.org\/reader\/(\d+)(?:\?[^#\s]*)?$/,
+    // @example https://grayjay.internal/librivox/book/23008 (older releases used book?id=23008)
+    INTERNAL_BOOK: /^https:\/\/grayjay\.internal\/librivox\/book(?:\/[^/?#]+|\?id=[^&#]+)/,
+    // @example https://grayjay.internal/librivox/book/23008?chapter=0
+    INTERNAL_CHAPTER: /^https:\/\/grayjay\.internal\/librivox\/book\/[^/?#]+\?(?:[^#]*&)?chapter=\d+/,
+    AUTHOR_CHANNEL: /^https?:\/\/(?:www\.)?librivox\.org\/author\/(\d+)\/?(?:\?[^#\s]*)?$/,
+    READER_CHANNEL: /^https?:\/\/(?:www\.)?librivox\.org\/reader\/(\d+)\/?(?:\?[^#\s]*)?$/,
     PLAYLIST: /^https?:\/\/(?:www\.)?librivox\.org\/(?!(?:search|pages|category|reader|author|group|collections|\d{4}\/\d{2}\/\d{2})\/?)(?:[a-zA-Z0-9-]+)(?:-by-[a-zA-Z0-9-]+)?\/?(?:\?[^#\s]*)?$/,
     COLLECTION: /^https:\/\/librivox\.org\/.*collection.*\/$/,
     ARCHIVE_ORG_DETAILS: /https:\/\/(?:www\.)?archive\.org\/details\/([^\/]+)/
@@ -44,7 +48,12 @@ const REQUEST_HEADERS_API = {};
 const ITEMS_PER_PAGE = 10; // Max items per page allowed by API
 
 // HTTP Request Constants
-const DEFAULT_RETRIES = 3; // Default number of retry attempts for HTTP requests
+const DEFAULT_RETRIES = 3; // Retries for network errors, 408, 429 and 5xx only
+const HTTP_REQUEST_TIMEOUT = 408;
+const HTTP_TOO_MANY_REQUESTS = 429;
+const HTTP_SERVER_ERROR = 500;
+const RATE_LIMIT_DELAY_MS = 5000;
+const INTERNAL_BOOK_BASE = 'https://grayjay.internal/librivox/book';
 
 // Fallback Text Constants
 const FALLBACK_AUTHOR = 'Unknown Author';
@@ -148,14 +157,11 @@ source.getHome = function () {
  * @returns {boolean} True if URL is an audiobook
  */
 source.isPlaylistUrl = (url) => {
-    if (IS_TESTING) {
-        bridge.log(`source.isPlaylistUrl . ${url}`);
+    // Chapter URLs also match the book patterns; Android search checks playlists first
+    if (source.isContentDetailsUrl(url)) {
+        return false;
     }
-    // Add check for internal URL format
-    if (url.startsWith('https://grayjay.internal/librivox/book')) {
-        return true;
-    }
-    return REGEX.PLAYLIST.test(url);
+    return REGEX.INTERNAL_BOOK.test(url) || REGEX.PLAYLIST.test(url);
 };
 
 /**
@@ -209,7 +215,7 @@ source.search = function (query, type, order, filters) {
  * @returns {ContentPager} Paged results for author search
  */
 source.searchChannels = function (query) {
-    return searchAuthors(query);
+    return new AuthorSearchPager({ context: { query, offset: 0 } }).nextPage();
 };
 
 /**
@@ -325,10 +331,7 @@ source.getPlaylist = function (url) {
  * @returns {boolean} True if URL is a chapter URL
  */
 source.isContentDetailsUrl = function (url) {
-    if (url.startsWith('https://grayjay.internal/librivox/book/') && url.includes('?chapter=')) {
-        return true;
-    }
-    return REGEX.CONTENT_DETAILS.test(url);
+    return REGEX.INTERNAL_CHAPTER.test(url) || REGEX.CONTENT_DETAILS.test(url);
 };
 
 /**
@@ -336,44 +339,9 @@ source.isContentDetailsUrl = function (url) {
  * @param {string} url Chapter URL
  * @returns {PlatformVideoDetails} Chapter details
  */
-/**
- * Get chapter details
- * @param {string} url Chapter URL
- * @returns {PlatformVideoDetails} Chapter details
- */
 source.getContentDetails = function (url) {
-    let bookId, chapterId;
-
-    // Handle internal URL format
-    if (url.startsWith('https://grayjay.internal/librivox/book/')) {
-        bookId = url.split('/').pop().split('?')[0];
-        const urlObj = new URL(url);
-        chapterId = urlObj.searchParams.get("chapter");
-    } else {
-        // Handle traditional URL
-        const meta = new URL(url);
-        chapterId = meta.searchParams.get("chapter");
-        bookId = extractId(url);
-    }
-
-    // Get audiobook details
-    let id;
-
-    if (bookId) {
-        id = bookId;
-
-    } else {
-        id = extractSlug(url);
-    }
-
-    let apiUrl = URLS.API_AUDIOBOOKS_DETAILS.replace('{audioBookId}', id);
-
-    let playlistInfo = fetchAudiobookDetailsFromApi(apiUrl);
-
-    // Validate playlistInfo has chapters
-    if (!playlistInfo || !Array.isArray(playlistInfo.chapters)) {
-        throw new ScriptException(`No chapters found for audiobook`);
-    }
+    const chapterId = new URL(url).searchParams.get('chapter');
+    const playlistInfo = fetchAudiobookDetails(url);
 
     // Find chapter by index
     const chapter = playlistInfo.chapters.find(c => c.chapterId == chapterId);
@@ -421,7 +389,7 @@ source.getContentDetails = function (url) {
         sources.push(new AudioUrlSource({
             name: 'audio (archive.org)',
             container: 'audio/mpeg',
-            codec: 'mp4a.40.2',
+            codec: 'mp3',
             url: chapter.chapterFile,
             language: 'Unknown',
             duration
@@ -433,16 +401,16 @@ source.getContentDetails = function (url) {
     }
 
     return new PlatformVideoDetails({
-        id: new PlatformID(PLATFORM, `${bookId}_chapter_${chapterId}`, config.id),
+        id: new PlatformID(PLATFORM, `${playlistInfo.id}_chapter_${chapterId}`, config.id),
         name: chapter.chapterName,
         description: combinedDescription,
         author: new PlatformAuthorLink(
-            new PlatformID(PLATFORM, extractChannelId(playlistInfo.authorUrl) || '', config.id),
+            new PlatformID(PLATFORM, playlistInfo.authorUrl, config.id),
             playlistInfo.authorName,
             playlistInfo.authorUrl,
-            playlistInfo?.authorThumbnailUrl ?? ''
+            playlistInfo.authorThumbnailUrl
         ),
-        url: url,
+        url: `${INTERNAL_BOOK_BASE}/${playlistInfo.id}?chapter=${chapterId}`,
         duration: chapter.duration,
         thumbnails: new Thumbnails([new Thumbnail(playlistInfo.bookCoverUrl)]),
         video: new UnMuxVideoSourceDescriptor([], sources),
@@ -490,31 +458,13 @@ class HomeContentPager extends ContentPager {
             nextPageUrl += `&genre=${encodeURIComponent(genreOption)}`;
         }
 
-        try {
-            const response = httpGET({
-                url: nextPageUrl,
-                useAuthenticated: false
-            });
+        const books = httpGET(nextPageUrl).data;
 
-            const data = response.data || response;
-            const books = Array.isArray(data) ? data : [];
-
-            if (books && books.length > 0) {
-                const newBooks = books
-                    .map(audiobookToPlaylist)
-                    .filter(book => book?.id);
-
-                // Add new books to results
-                this.results = [...this.results, ...newBooks];
-                this.offset += this.pageSize;
-                this.hasMore = newBooks.length > 0;
-            } else {
-                this.hasMore = false;
-            }
-        } catch (error) {
-            logError(`Error parsing more books: ${error.message}`);
-            this.hasMore = false;
-        }
+        this.results = books
+            .map(audiobookToPlaylist)
+            .filter(book => book?.id);
+        this.offset += this.pageSize;
+        this.hasMore = this.results.length > 0;
 
         return this;
     }
@@ -550,28 +500,15 @@ class SearchAudiobooksPager extends VideoPager {
         const queryParams = objectToUrlEncodedString(params);
         const url = `${this.context.baseUrl}?${queryParams}`;
 
-        let responseLength = 0;
+        const books = httpGET(url).data;
 
-        try {
-            const response = httpGET(url);
-            const books = response.data || [];
-
-            responseLength = books.length;
-            searchResults = books
-                .filter(b => b.url_librivox) // audiobooks in-progress or Abandoned don't have URL
-                .filter(this.context.filterCb || (() => true))
-                .map(audiobookToPlaylist);
-        } catch (error) {
-            logError(`Error parsing search results: ${error.message}`);
-            return new SearchAudiobooksPager({
-                videos: [],
-                hasMore: false,
-                context: this.context
-            });
-        }
+        searchResults = books
+            .filter(b => b.url_librivox) // audiobooks in-progress or Abandoned don't have URL
+            .filter(this.context.filterCb || (() => true))
+            .map(audiobookToPlaylist);
 
         offset += (this.context.limit || ITEMS_PER_PAGE);
-        let hasMore = responseLength === (this.context.limit || ITEMS_PER_PAGE);
+        let hasMore = books.length === (this.context.limit || ITEMS_PER_PAGE);
 
         return new SearchAudiobooksPager({
             videos: searchResults,
@@ -608,50 +545,22 @@ class ReaderAudiobooksPager extends VideoPager {
             });
         }
 
-        try {
-            // Get audiobooks narrated by this reader using the /api/v3/readers/{id}/audiobooks endpoint
-            const audiobooksUrl = `${URLS.API_READERS_AUDIOBOOKS(readerId)}?limit=${limit}&offset=${offset}`;
-            const audiobooksResponse = httpGET(audiobooksUrl);
+        const audiobooks = httpGET(`${URLS.API_READERS_AUDIOBOOKS(readerId)}?limit=${limit}&offset=${offset}`).data;
 
-            // The /api/v3/readers/{id}/audiobooks endpoint returns audiobooks directly in the 'data' array
-            const audiobooks = audiobooksResponse.data;
+        const results = audiobooks
+            .filter(audiobook => audiobook && audiobook.id)
+            .filter(audiobook => !REGEX.COLLECTION.test(audiobook.url_librivox || ''))
+            .map(audiobookToPlaylist)
+            .filter(playlist => playlist !== null);
 
-            if (!audiobooks || !Array.isArray(audiobooks)) {
-                logError(`Invalid audiobooks response format for reader ${readerId}`);
-                return new ReaderAudiobooksPager({
-                    videos: [],
-                    hasMore: false,
-                    context: this.context
-                });
+        return new ReaderAudiobooksPager({
+            videos: results,
+            hasMore: audiobooks.length === limit,
+            context: {
+                ...this.context,
+                page: currentPage + 1
             }
-
-            // Process audiobooks directly from the /api/v3/readers/{id}/audiobooks endpoint
-            const results = audiobooks
-                .filter(audiobook => audiobook && audiobook.id)
-                .filter(audiobook => !REGEX.COLLECTION.test(audiobook.url_librivox || ''))
-                .map(audiobookToPlaylist)
-                .filter(playlist => playlist !== null);
-
-            // Determine if there are more pages
-            const hasMorePages = audiobooks.length === limit;
-
-            return new ReaderAudiobooksPager({
-                videos: results,
-                hasMore: hasMorePages,
-                context: {
-                    ...this.context,
-                    page: currentPage + 1
-                }
-            });
-
-        } catch (error) {
-            logError(`Error fetching reader audiobooks from /api/v3/readers/${readerId}/audiobooks: ${error.message}`);
-            return new ReaderAudiobooksPager({
-                videos: [],
-                hasMore: false,
-                context: this.context
-            });
-        }
+        });
     }
 }
 
@@ -678,45 +587,59 @@ class AuthorAudiobooksPager extends VideoPager {
             });
         }
 
-        try {
-            const audiobooksUrl = `${URLS.API_AUTHORS_AUDIOBOOKS(authorId)}?limit=${limit}&offset=${offset}`;
-            const audiobooksResponse = httpGET(audiobooksUrl);
-            const audiobooks = audiobooksResponse?.data;
+        const audiobooks = httpGET(`${URLS.API_AUTHORS_AUDIOBOOKS(authorId)}?limit=${limit}&offset=${offset}`).data;
 
-            if (!audiobooks || !Array.isArray(audiobooks)) {
-                logError(`Invalid audiobooks response format for author ${authorId}`);
-                return new AuthorAudiobooksPager({
-                    videos: [],
-                    hasMore: false,
-                    context: this.context
-                });
+        const results = audiobooks
+            .filter(audiobook => audiobook && audiobook.id)
+            .map(audiobookToPlaylist)
+            .filter(playlist => playlist !== null);
+
+        return new AuthorAudiobooksPager({
+            videos: results,
+            hasMore: audiobooks.length === limit,
+            context: {
+                ...this.context,
+                page: currentPage + 1
             }
+        });
+    }
+}
 
-            const results = audiobooks
-                .filter(audiobook => audiobook && audiobook.id)
-                .map(audiobookToPlaylist)
-                .filter(playlist => playlist !== null);
+/**
+ * Author search pager; hasMore follows the API's meta.total
+ */
+class AuthorSearchPager extends ChannelPager {
+    constructor({ channels = [], hasMore = true, context = {} } = {}) {
+        super(channels, hasMore, context);
+    }
 
-            // Determine if there are more pages
-            const hasMorePages = audiobooks.length === limit;
+    nextPage() {
+        const offset = this.context.offset;
+        const params = objectToUrlEncodedString({ q: this.context.query, limit: ITEMS_PER_PAGE, offset });
+        const response = httpGET(`${URLS.API_AUTHORS_SEARCH}?${params}`);
 
-            return new AuthorAudiobooksPager({
-                videos: results,
-                hasMore: hasMorePages,
-                context: {
-                    ...this.context,
-                    page: currentPage + 1
-                }
+        const channels = response.data.map(author => {
+            const authorUrl = `${URLS.AUTHOR_BASE}/${author.id}`;
+
+            return new PlatformChannel({
+                id: new PlatformID(PLATFORM, authorUrl, config.id),
+                name: author.name || FALLBACK_AUTHOR,
+                thumbnail: author.image_url || DEFAULT_IMAGES.AUTHOR_AVATAR,
+                subscribers: UNKNOWN_COUNT,
+                description: author.description || '',
+                url: authorUrl,
+                links: buildAuthorLinks(author)
             });
+        });
 
-        } catch (error) {
-            logError(`Error fetching author audiobooks from /api/v3/authors/${authorId}/audiobooks: ${error.message}`);
-            return new AuthorAudiobooksPager({
-                videos: [],
-                hasMore: false,
-                context: this.context
-            });
-        }
+        return new AuthorSearchPager({
+            channels,
+            hasMore: offset + response.data.length < response.meta.total,
+            context: {
+                ...this.context,
+                offset: offset + ITEMS_PER_PAGE
+            }
+        });
     }
 }
 // ====================== CORE FUNCTIONALITY ======================
@@ -744,85 +667,28 @@ function createAudiobookSearchPager(baseUrl, query, filterCb = () => true, filte
 }
 
 /**
- * Search for authors by name
- * @param {string} query Search query
- * @returns {ContentPager} Paged results for author search
- */
-function searchAuthors(query) {
-    const url = `${URLS.API_AUTHORS_SEARCH}?q=${encodeURIComponent(query)}`;
-
-    try {
-        const response = httpGET(url);
-        const authors = response.data || [];
-
-        const channels = authors.map(author => {
-            const authorName = author.name || FALLBACK_AUTHOR;
-            const authorUrl = `${URLS.AUTHOR_BASE}/${author.id}`;
-
-            return new PlatformChannel({
-                id: new PlatformID(PLATFORM, authorUrl, config.id),
-                name: authorName,
-                thumbnail: author.image_url || DEFAULT_IMAGES.AUTHOR_AVATAR,
-                subscribers: UNKNOWN_COUNT,
-                description: author.description || '',
-                url: authorUrl,
-                links: buildAuthorLinks(author)
-            });
-        });
-
-        return new ContentPager(channels, false);
-    } catch (error) {
-        logError(`Error parsing author search results: ${error.message}`);
-        return new ContentPager([], false);
-    }
-}
-
-function getAuthorByID(id) {
-    try {
-        const response = httpGET(URLS.API_AUTHORS_DETAILS(id));
-        return response.data;
-    } catch (error) {
-        logError(`Error fetching author by ID: ${error.message}`);
-        return null;
-    }
-}
-
-/**
  * Get author channel details
  * @param {string} url Author URL
  * @returns {PlatformChannel} Author channel
  */
 function getAuthorChannel(url) {
     const channelId = extractChannelId(url);
+    const author = httpGET(URLS.API_AUTHORS_DETAILS(channelId)).data;
 
-    const author = getAuthorByID(channelId);
-
-    if (!author) {
-        logError(`Author not found for ID: ${channelId}`);
-        return new PlatformChannel({
-            id: new PlatformID(PLATFORM, url, config.id),
-            name: FALLBACK_AUTHOR,
-            thumbnail: DEFAULT_IMAGES.AUTHOR_AVATAR,
-            subscribers: NO_SUBSCRIBERS,
-            description: '',
-            url,
-            links: {}
-        });
+    if (!author?.id) {
+        throw new ScriptException(`Author not found: ${channelId}`);
     }
 
-    if (!author.url) {
-        author.url = `${URLS.AUTHOR_BASE}/${author.id}`;
-    }
-
-    const authorName = author.name || FALLBACK_AUTHOR;
+    // Subscriptions key on the channel url, so a trailing slash or query must not create a second one
+    const authorUrl = `${URLS.AUTHOR_BASE}/${author.id}`;
 
     return new PlatformChannel({
-        id: new PlatformID(PLATFORM, author.url, config.id),
-        name: authorName,
-        thumbnail: author?.image_url || DEFAULT_IMAGES.AUTHOR_AVATAR || '',
+        id: new PlatformID(PLATFORM, authorUrl, config.id),
+        name: author.name || FALLBACK_AUTHOR,
+        thumbnail: author.image_url || DEFAULT_IMAGES.AUTHOR_AVATAR,
         subscribers: NO_SUBSCRIBERS,
-        description: author?.description || '',
-        url,
+        description: author.description || '',
+        url: authorUrl,
         links: buildAuthorLinks(author)
     });
 }
@@ -834,37 +700,24 @@ function getAuthorChannel(url) {
 function getReaderChannel(url) {
     const readerId = extractReaderIdFromUrl(url);
 
-    // Check if we've already cached this reader's info
-    if (state.readers[readerId]) {
-        const reader = state.readers[readerId];
-        return new PlatformChannel({
-            id: new PlatformID(PLATFORM, url, config.id),
-            name: `${reader.name} (reader)`,
-            thumbnail: DEFAULT_IMAGES.READER_AVATAR,
-            subscribers: NO_SUBSCRIBERS,
-            description: reader.description || `LibriVox reader with ${reader.bookCount || 'many'} narrated books.`,
-            url,
-            links: {
-                'LibriVox': url
-            }
-        });
+    // Earlier releases cached a placeholder when the request failed; refetch those
+    let readerInfo = state.readers[readerId];
+    if (!readerInfo || readerInfo.description === FALLBACK_READER_DESCRIPTION) {
+        readerInfo = fetchReaderInfo(readerId);
+        state.readers[readerId] = readerInfo;
     }
 
-    // Fetch reader's profile to get information
-    const readerInfo = fetchReaderInfo(readerId);
-
-    // Cache the reader info for future use
-    state.readers[readerId] = readerInfo;
+    const readerUrl = `${URLS.READER_BASE}/${readerId}`;
 
     return new PlatformChannel({
-        id: new PlatformID(PLATFORM, url, config.id),
+        id: new PlatformID(PLATFORM, readerUrl, config.id),
         name: `${readerInfo.name} (reader)`,
         thumbnail: DEFAULT_IMAGES.READER_AVATAR,
         subscribers: NO_SUBSCRIBERS,
         description: readerInfo.description,
-        url,
+        url: readerUrl,
         links: {
-            'LibriVox': url
+            'LibriVox': readerUrl
         }
     });
 }
@@ -872,68 +725,39 @@ function getReaderChannel(url) {
 /**
  * Fetch reader information from the API
  * @param {string} readerId Reader ID
- * @returns {Object} Reader information
+ * @returns {Object} Reader information; throws when the API has no such reader
  */
 function fetchReaderInfo(readerId) {
-    try {
-        // Get reader details from /api/v3/readers/{reader id} endpoint
-        const readerUrl = URLS.API_READERS_DETAILS(readerId);
-        const readerResponse = httpGET(readerUrl);
+    const reader = httpGET(URLS.API_READERS_DETAILS(readerId)).data;
 
-        // The /api/v3/readers/{id} endpoint returns the reader data directly in the 'data' field
-        const reader = readerResponse.data;
-
-        if (reader) {
-            // Create a description using the available information
-            let description = `LibriVox volunteer reader`;
-            if (reader.display_name) {
-                description = `LibriVox reader ${reader.display_name}`;
-            }
-
-            if (reader.section_count > 0) {
-                description += ` who has recorded ${reader.section_count} sections`;
-            }
-
-            if (reader.audiobook_count > 0) {
-                description += ` across ${reader.audiobook_count} audiobooks`;
-            }
-
-            description += '.';
-
-            return {
-                name: reader.display_name || `Reader ${readerId}`,
-                catalogName: reader.display_name || `Reader ${readerId}`,
-                forumName: '',
-                totalSections: reader.section_count || NO_SUBSCRIBERS,
-                totalMatches: reader.audiobook_count || NO_SUBSCRIBERS,
-                description: description,
-                bookCount: reader.audiobook_count || NO_SUBSCRIBERS
-            };
-        }
-
-        // Fallback if no reader data
-        return {
-            name: `Reader ${readerId}`,
-            catalogName: `Reader ${readerId}`,
-            forumName: '',
-            totalSections: NO_SUBSCRIBERS,
-            totalMatches: NO_SUBSCRIBERS,
-            description: FALLBACK_READER_DESCRIPTION,
-            bookCount: NO_SUBSCRIBERS
-        };
-
-    } catch (error) {
-        logError(`Error fetching reader info from API: ${error.message}`);
-        return {
-            name: `Reader ${readerId}`,
-            catalogName: `Reader ${readerId}`,
-            forumName: '',
-            totalSections: NO_SUBSCRIBERS,
-            totalMatches: NO_SUBSCRIBERS,
-            description: FALLBACK_READER_DESCRIPTION,
-            bookCount: NO_SUBSCRIBERS
-        };
+    if (!reader?.id) {
+        throw new ScriptException(`Reader not found: ${readerId}`);
     }
+
+    let description = `LibriVox volunteer reader`;
+    if (reader.display_name) {
+        description = `LibriVox reader ${reader.display_name}`;
+    }
+
+    if (reader.section_count > 0) {
+        description += ` who has recorded ${reader.section_count} sections`;
+    }
+
+    if (reader.audiobook_count > 0) {
+        description += ` across ${reader.audiobook_count} audiobooks`;
+    }
+
+    description += '.';
+
+    return {
+        name: reader.display_name || `Reader ${readerId}`,
+        catalogName: reader.display_name || `Reader ${readerId}`,
+        forumName: '',
+        totalSections: reader.section_count || NO_SUBSCRIBERS,
+        totalMatches: reader.audiobook_count || NO_SUBSCRIBERS,
+        description: description,
+        bookCount: reader.audiobook_count || NO_SUBSCRIBERS
+    };
 }
 /**
  * Get audiobooks by author
@@ -986,20 +810,18 @@ function getReaderAudiobooks(url) {
  */
 function getAudiobookDetails(url) {
 
-    const playlistInfo = getAudiobookCachedDetails(url);
+    const playlistInfo = fetchAudiobookDetails(url);
 
     const author = new PlatformAuthorLink(
-        new PlatformID(PLATFORM, extractChannelId(playlistInfo.authorUrl) || '', config.id),
+        new PlatformID(PLATFORM, playlistInfo.authorUrl, config.id),
         playlistInfo.authorName,
         playlistInfo.authorUrl,
-        playlistInfo?.authorThumbnailUrl ?? ''
+        playlistInfo.authorThumbnailUrl
     );
 
-
-
-    // Extract the book ID from the URL or use a consistent identifier
-    const bookId = extractId(url) || url.split('/').pop();
-    const internalUrl = `https://grayjay.internal/librivox/book/${bookId}`;
+    // Slug URLs resolve to the numeric id so every form of a book shares one url and id
+    const bookId = playlistInfo.id;
+    const internalUrl = `${INTERNAL_BOOK_BASE}/${bookId}`;
 
     const bookCoverUrl = playlistInfo.bookCoverUrl;
     const contents = playlistInfo.chapters.map((chapter, idx) => {
@@ -1017,7 +839,7 @@ function getAudiobookDetails(url) {
     });
 
     return new PlatformPlaylistDetails({
-        id: new PlatformID(PLATFORM, internalUrl, config.id),
+        id: new PlatformID(PLATFORM, String(bookId), config.id),
         author: author,
         name: playlistInfo.title,
         videoCount: contents.length ?? 0,
@@ -1030,88 +852,67 @@ function getAudiobookDetails(url) {
 
 
 /**
- * Get cached audiobook details or fetch them if not cached
- * @param {string} url Audiobook URL
- * @returns {Object} Audiobook details
+ * Fetch audiobook details for any accepted book or chapter URL (book?id=N, book/N, librivox.org slug)
+ * @param {string} url Audiobook or chapter URL
+ * @returns {Object} Audiobook details, including the numeric book id from the API
  */
-function getAudiobookCachedDetails(url) {
+function fetchAudiobookDetails(url) {
+    const bookKey = extractId(url) || extractSlug(url);
 
-    const audioBookId = extractId(url);
-    let id;
-
-    if (audioBookId) {
-        id = audioBookId;
-    } else {
-        id = extractSlug(url);
+    if (!bookKey) {
+        throw new ScriptException(`Unrecognized audiobook URL: ${url}`);
     }
 
-    let apiUrl = URLS.API_AUDIOBOOKS_DETAILS.replace('{audioBookId}', id);
+    const book = httpGET(URLS.API_AUDIOBOOKS_DETAILS.replace('{audioBookId}', encodeURIComponent(bookKey))).data;
 
-    return fetchAudiobookDetailsFromApi(apiUrl);
-}
+    if (!book || !Array.isArray(book.sections)) {
+        throw new ScriptException('No audiobook data found in API response');
+    }
 
-/**
- * Fetch audiobook details from LibriVox API
- * @param {string} audioBookId Audiobook ID
- * @param {string} url Audiobook URL
- * @returns {Object} Audiobook details
- */
-function fetchAudiobookDetailsFromApi(apiUrl) {
-    try {
-        const response = httpGET(apiUrl);
-        const book = response.data;
+    const match = book?.url_iarchive?.match(REGEX.ARCHIVE_ORG_DETAILS);
 
-        if (!book) {
-            throw new ScriptException("No book data found in API response");
-        }
+    const iarchive_id = match ? match[1] : null;
+    let viewCount = UNKNOWN_COUNT;
 
-        const match = book?.url_iarchive?.match(REGEX.ARCHIVE_ORG_DETAILS);
+    if (iarchive_id) {
+        viewCount = fetchViewCount(iarchive_id);
+    }
 
-        const iarchive_id = match ? match[1] : null;
-        let viewCount = UNKNOWN_COUNT;
+    // Handle multiple authors
+    const authors = book?.authors || [];
+    let authorName = FALLBACK_AUTHOR;
+    let authorUrl = '';
+    let authorThumbnailUrl = DEFAULT_IMAGES.AUTHOR_AVATAR;
 
-        if (iarchive_id) {
-            viewCount = fetchViewCount(iarchive_id);
-        }
+    // Format primary author
+    if (authors.length > 0) {
+        const primaryAuthor = authors[0];
+        authorName = primaryAuthor.name || FALLBACK_AUTHOR;
+        authorUrl = primaryAuthor.id ? `${URLS.AUTHOR_BASE}/${primaryAuthor.id}` : '';
+        authorThumbnailUrl = primaryAuthor?.image_url || DEFAULT_IMAGES.AUTHOR_AVATAR;
+    }
 
-        // Handle multiple authors
-        const authors = book?.authors || [];
-        let authorName = FALLBACK_AUTHOR;
-        let authorUrl = '';
-        let authorThumbnailUrl = DEFAULT_IMAGES.AUTHOR_AVATAR;
-
-        // Format primary author
-        if (authors.length > 0) {
-            const primaryAuthor = authors[0];
-            authorName = primaryAuthor.name || FALLBACK_AUTHOR;
-            authorUrl = primaryAuthor.id ? `${URLS.AUTHOR_BASE}/${primaryAuthor.id}` : '';
-            authorThumbnailUrl = primaryAuthor?.image_url || DEFAULT_IMAGES.AUTHOR_AVATAR;
-        }
-
-        // Format all authors for description
-        const formattedAuthors = authors.map(author => {
-            return {
-                id: author.id,
-                name: author.name || FALLBACK_AUTHOR,
-                url: author.id ? `${URLS.AUTHOR_BASE}/${author.id}` : ''
-            };
-        });
-
+    // Format all authors for description
+    const formattedAuthors = authors.map(author => {
         return {
-            viewCount,
-            title: book.title || FALLBACK_TITLE,
-            description: book.description || '',
-            authorThumbnailUrl: authorThumbnailUrl,
-            authorName: authorName,  // Primary author for backward compatibility
-            authorUrl: authorUrl,    // Primary author URL
-            authors: formattedAuthors, // All authors
-            bookCoverUrl: book.coverart_thumbnail || book.coverart_jpg || DEFAULT_IMAGES.BOOK_COVER,
-            chapters: book.sections.map((s, idx) => formatChapterData(s, idx))
+            id: author.id,
+            name: author.name || FALLBACK_AUTHOR,
+            url: author.id ? `${URLS.AUTHOR_BASE}/${author.id}` : ''
         };
-    } catch (error) {
-        logError(`Error parsing API response: ${error.message}`);
-        throw new ScriptException(`Failed to parse audiobook details: ${error.message}`);
-    }
+    });
+
+    return {
+        id: book.id,
+        viewCount,
+        title: book.title || FALLBACK_TITLE,
+        description: book.description || '',
+        authorThumbnailUrl: authorThumbnailUrl,
+        authorName: authorName,  // Primary author for backward compatibility
+        authorUrl: authorUrl,    // Primary author URL
+        authors: formattedAuthors, // All authors
+        bookCoverUrl: book.coverart_thumbnail || book.coverart_jpg || DEFAULT_IMAGES.BOOK_COVER,
+        chapters: book.sections.map((s, idx) => formatChapterData(s, idx))
+    };
 }
 
 /**
@@ -1196,25 +997,25 @@ function audiobookToPlaylist(book) {
         name: book?.title || FALLBACK_TITLE,
         thumbnail: book.coverart_thumbnail || book?.coverart_jpg || DEFAULT_IMAGES.BOOK_COVER,
         videoCount: book?.sections?.length || book?.num_sections || UNKNOWN_COUNT,
-        url: `https://grayjay.internal/librivox/book?id=${bookId}`
+        url: `${INTERNAL_BOOK_BASE}/${bookId}`
     });
 }
 
 // ====================== HTTP UTILITIES ======================
 
 /**
- * Gets the requested url and returns the response body either as a string or as a parsed json object
+ * GET with retries for network errors, 408, 429 (after a delay) and 5xx.
+ * Other non-OK responses and invalid JSON throw at once, with the API's error message when it sent one.
  * @param {string | Object} urlOrOptions - Either a URL string or an options object
  * @param {string} urlOrOptions.url - The URL to call (when using object form)
  * @param {boolean} [urlOrOptions.useAuthenticated=false] - If true, will use the authenticated headers
- * @param {boolean} [urlOrOptions.parseResponse=true] - If true, will parse the response as json and check for errors
+ * @param {boolean} [urlOrOptions.parseResponse=true] - If true, will parse the response as json
  * @param {number} [urlOrOptions.retries=DEFAULT_RETRIES] - Number of retry attempts
- * @param {Object} [urlOrOptions.headers=null] - Custom headers to use for the request
+ * @param {Object} [urlOrOptions.headers=REQUEST_HEADERS_API] - Headers for the request
  * @returns {string | Object} the response body as a string or the parsed json object
  * @throws {ScriptException}
  */
 function httpGET(urlOrOptions) {
-    // Support both string URL and options object
     const options = typeof urlOrOptions === 'string'
         ? { url: urlOrOptions }
         : urlOrOptions;
@@ -1224,47 +1025,64 @@ function httpGET(urlOrOptions) {
         useAuthenticated = false,
         parseResponse = true,
         retries = DEFAULT_RETRIES,
-        headers = null
+        headers = REQUEST_HEADERS_API
     } = options;
 
-    let lastError;
-    let attempts = retries + 1; // +1 for the initial attempt
+    const requestHeaders = { ...headers };
+    if (!requestHeaders['User-Agent']) {
+        requestHeaders['User-Agent'] = `grayjay.app/${bridge.buildPlatform}/${bridge.buildVersion}`;
+    }
 
-    while (attempts > 0) {
+    const maxAttempts = retries + 1;
+    let lastError = null;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        let resp;
         try {
-            const localHeaders = headers ?? REQUEST_HEADERS_API;
-
-            const resp = http.GET(
-                url,
-                localHeaders,
-                useAuthenticated
-            );
-
-            if (!resp.isOk) {
-                throw new ScriptException(`Request [${url}] failed with code [${resp.code}]`);
-            }
-
-            if (parseResponse) {
-                const json = JSON.parse(resp.body);
-                if (json.errors) {
-                    throw new ScriptException(json.errors[0].message);
-                }
-                return json;
-            }
-
-            return resp.body;
+            resp = http.GET(url, requestHeaders, useAuthenticated);
         } catch (error) {
+            logError(`Request error on ${url}: ${error}`);
             lastError = error;
-            attempts--;
+            continue;
+        }
 
-            if (attempts === 0) {
-                // All retry attempts failed
-                logError(`Request failed after ${retries + 1} attempts`);
-                logError(lastError);
-                throw lastError;
+        if (resp.code === HTTP_TOO_MANY_REQUESTS) {
+            lastError = new ScriptException(`Rate limited [${resp.code}]: ${url}`);
+            if (attempt < maxAttempts) {
+                bridge.sleep(RATE_LIMIT_DELAY_MS);
             }
+            continue;
+        }
+
+        // Android reports a socket timeout as 408
+        if (resp.code === HTTP_REQUEST_TIMEOUT || resp.code >= HTTP_SERVER_ERROR) {
+            lastError = new ScriptException(`Request failed [${resp.code}]: ${url}`);
+            continue;
+        }
+
+        if (!resp.isOk) {
+            let detail = url;
+            try {
+                detail = JSON.parse(resp.body).error.message ?? url;
+            } catch (error) {
+                // Not the API's {error: {message}} body; keep the url as the detail
+            }
+            throw new ScriptException(`Request failed [${resp.code}]: ${detail}`);
+        }
+
+        if (!parseResponse) {
+            return resp.body;
+        }
+
+        try {
+            return JSON.parse(resp.body);
+        } catch (error) {
+            throw new ScriptException(`Invalid JSON response from ${url}: ${error.message}`);
         }
     }
+
+    logError(`Request failed after ${maxAttempts} attempts: ${url}`);
+    throw lastError;
 }
 
 // ====================== UTILITY FUNCTIONS ======================
