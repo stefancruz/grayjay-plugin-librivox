@@ -7,7 +7,7 @@
   "sourceUrl": "https://grayjay-plugin-librivox.craftwithstefan.com/LibriVoxConfig.json",
   "repositoryUrl": "https://github.com/stefancruz/grayjay-plugin-librivox",
   "scriptUrl": "./LibriVoxScript.js",
-  "version": 28,
+  "version": 29,
   "iconUrl": "https://grayjay-plugin-librivox.craftwithstefan.com/LibriVoxIcon.png",
   "id": "5c2f78d4-6eec-4f3f-b25b-28d885aeb147",
   "scriptSignature": "l8jjdq4T8sDPMugIhyXj/jDOdJG3rqTm3AaMhtFrympJLTPRbAv76p/d7sYHtOEz6/+MuYLZrSRyV08AJu/wDY6zpoP0NP1YPRm0EzeUzL5bc+UYVRhENC/xb3w13H4cCrC3rGlc/zd0TflqGpoIAix7qU++NNXeIwcVh2FElIPZvHOSw8Lchp4/FmEs6Oet6vAuBD9werpWvCkMTMPpMs+mhKyhFavMuXLUOspo06IkDTqRuVKuSM64Jim+XmTEOHtBlVMB+zYH8nscBk8hTfaXYUSq9jFI1YaX1uxUytrcHA4ZWr2gkjWjDEndz5AD88FMFDo0UJZONiYT85nq4w==",
@@ -17,12 +17,12 @@
   ],
   "allowEval": false,
   "constants": {
-    "baseUrl": "https://librivox-api.craftwithstefan.com"
+    "baseUrl": "https://librivox.opensource-tv.com"
   },
   "allowUrls": [
     ".librivox.org",
     ".archive.org",
-    "librivox-api.craftwithstefan.com"
+    "librivox.opensource-tv.com"
   ],
   "settings": [
     {
@@ -161,6 +161,9 @@
       "Fix: Audio tracks are labelled MP3 instead of AAC;",
       "Improvement: Author search loads more results when scrolling;",
       "Improvement: Requests are retried only after timeouts, rate limiting (with a pause) and server errors;"
+    ],
+    "29": [
+      "Improvement: Requests go to the LibriVox API at librivox.opensource-tv.com;"
     ]
   }
 }
